@@ -191,6 +191,7 @@
                       type="number"
                       variant="outlined"
                       density="compact"
+                      :min="0"
                     ></v-text-field>
                   </v-col>
                   <v-col>
@@ -200,6 +201,7 @@
                       type="number"
                       variant="outlined"
                       density="compact"
+                      :min="0"
                     ></v-text-field>
                   </v-col>
                   <v-col cols="auto">
@@ -371,7 +373,7 @@ const formData = ref({
   player1TeamId: '',
   player2TeamId: '',
   date: new Date().toISOString().split('T')[0],
-  scores: [{ set: 1, player1Score: 0, player2Score: 0 }],
+  scores: [{ set: 1, player1Score: null, player2Score: null }],
   notes: '',
   photos: [],
   videoUrls: [],
@@ -566,7 +568,7 @@ const openMatchDialog = (match = null) => {
       player1TeamId: '',
       player2TeamId: '',
       date: new Date().toISOString().split('T')[0],
-      scores: [{ set: 1, player1Score: 0, player2Score: 0 }],
+      scores: [{ set: 1, player1Score: null, player2Score: null }],
       notes: '',
       photos: [],
       videoUrls: [],
@@ -584,8 +586,8 @@ const closeMatchDialog = () => {
 const addScore = () => {
   formData.value.scores.push({
     set: formData.value.scores.length + 1,
-    player1Score: 0,
-    player2Score: 0
+    player1Score: null,
+    player2Score: null
   })
 }
 

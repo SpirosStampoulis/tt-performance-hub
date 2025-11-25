@@ -23,7 +23,7 @@
       <v-col cols="12" md="4">
         <v-card>
           <v-card-text>
-            <div class="text-h6 mb-2">Opponents Tracked</div>
+            <div class="text-h6 mb-2">Players Tracked</div>
             <div class="text-h3">{{ opponentsStore.opponents.length }}</div>
           </v-card-text>
         </v-card>
@@ -161,7 +161,7 @@
         <v-list>
           <v-list-item prepend-icon="mdi-trophy" title="Add Match" @click="goToMatches"></v-list-item>
           <v-list-item prepend-icon="mdi-tournament" title="Add Tournament" @click="goToTournaments"></v-list-item>
-          <v-list-item prepend-icon="mdi-account-plus" title="Add Opponent" @click="goToOpponents"></v-list-item>
+          <v-list-item prepend-icon="mdi-account-plus" title="Add Player" @click="goToOpponents"></v-list-item>
           <v-list-item prepend-icon="mdi-bullseye-arrow" title="Add Skill" @click="goToSkills"></v-list-item>
         </v-list>
         <v-card-actions>

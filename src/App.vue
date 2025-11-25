@@ -13,7 +13,7 @@
           <v-list-item prepend-icon="mdi-trophy" title="Matches" value="matches" to="/matches"></v-list-item>
           <v-list-item prepend-icon="mdi-tournament" title="Tournaments" value="tournaments" to="/tournaments"></v-list-item>
           <v-list-item prepend-icon="mdi-shield-account" title="League Management" value="leagues" to="/leagues"></v-list-item>
-          <v-list-item prepend-icon="mdi-account-group" title="Opponents" value="opponents" to="/opponents"></v-list-item>
+          <v-list-item prepend-icon="mdi-account-group" title="Players" value="opponents" to="/opponents"></v-list-item>
           <v-list-item prepend-icon="mdi-school" title="Skills" value="skills" to="/skills"></v-list-item>
         </v-list>
 
@@ -25,7 +25,7 @@
             <v-btn block @click="handleLogout" prepend-icon="mdi-logout" class="mt-2" color="error" variant="outlined">
               Logout
             </v-btn>
-          </div>
+  </div>
         </template>
       </v-navigation-drawer>
 
@@ -62,8 +62,8 @@ const pageTitle = computed(() => {
     MatchDetail: 'Match Details',
     Tournaments: 'Tournaments',
     LeagueManagement: 'League Management',
-    Opponents: 'Opponents',
-    OpponentDetail: 'Opponent Profile',
+    Opponents: 'Players',
+    OpponentDetail: 'Player Profile',
     Skills: 'Skill Library',
     Login: 'Login'
   }

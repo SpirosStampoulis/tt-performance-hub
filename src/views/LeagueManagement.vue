@@ -40,6 +40,11 @@
                 :key="teamMatch.id"
                 @click="viewTeamMatch(teamMatch)"
               >
+                <template v-slot:prepend>
+                  <v-avatar v-if="teamMatch.photoUrl" size="40" class="mr-2">
+                    <v-img :src="teamMatch.photoUrl"></v-img>
+                  </v-avatar>
+                </template>
                 <v-list-item-title>
                   {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
                 </v-list-item-title>
@@ -132,6 +137,69 @@
     </v-dialog>
 
 
+    <v-dialog v-model="showTeamMatchDetail" max-width="600">
+      <v-card v-if="selectedTeamMatch">
+        <v-card-title>
+          Team Match Details
+          <v-spacer></v-spacer>
+          <v-btn icon="mdi-close" variant="text" @click="showTeamMatchDetail = false"></v-btn>
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          <v-row>
+            <v-col>
+              <div class="text-h6 mb-2">
+                {{ getTeamName(selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId) }} vs 
+                {{ getTeamName(selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId) }}
+              </div>
+              <div class="text-subtitle-1 mb-2">
+                {{ selectedTeamMatch.round }} • {{ formatDate(selectedTeamMatch.date) }}
+              </div>
+              <div class="text-h5 mb-4">
+                Score: {{ selectedTeamMatch.team1Score || selectedTeamMatch.myTeamScore }}-{{ selectedTeamMatch.team2Score || selectedTeamMatch.opponentTeamScore }}
+              </div>
+              
+              <v-card variant="outlined" class="mb-4">
+                <v-card-title class="text-subtitle-1">Team Match Photo</v-card-title>
+                <v-card-text>
+                  <v-img 
+                    v-if="selectedTeamMatch.photoUrl" 
+                    :src="selectedTeamMatch.photoUrl" 
+                    aspect-ratio="16/9" 
+                    cover
+                    class="mb-2"
+                  ></v-img>
+                  <div v-else class="text-center text-medium-emphasis py-4">
+                    No photo uploaded yet
+                  </div>
+                  <v-file-input
+                    v-model="photoFile"
+                    label="Upload Photo"
+                    variant="outlined"
+                    accept="image/*"
+                    prepend-icon=""
+                    prepend-inner-icon="mdi-camera"
+                    :clearable="true"
+                    @change="handlePhotoUpload"
+                  ></v-file-input>
+                  <v-progress-linear v-if="uploadingPhoto" indeterminate class="mt-2"></v-progress-linear>
+                </v-card-text>
+              </v-card>
+              
+              <div v-if="selectedTeamMatch.notes" class="mt-4">
+                <div class="text-subtitle-1 mb-2">Notes</div>
+                <p style="white-space: pre-wrap">{{ selectedTeamMatch.notes }}</p>
+              </div>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="showTeamMatchDetail = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="deleteTeamDialog" max-width="400">
       <v-card>
         <v-card-title>Delete Team</v-card-title>
@@ -153,6 +221,7 @@ import { useTeamsStore } from '../stores/teams'
 import { useTeamMatchesStore } from '../stores/teamMatches'
 import { useMatchesStore } from '../stores/matches'
 import { formatDate } from '../utils/date'
+import { uploadImage } from '../utils/storage'
 
 const tournamentsStore = useTournamentsStore()
 const teamsStore = useTeamsStore()
@@ -311,9 +380,37 @@ const getTeamName = (teamId) => {
   return team ? team.name : 'Unknown'
 }
 
-const viewTeamMatch = (teamMatch) => {
-  console.log('View team match:', teamMatch)
+const handlePhotoUpload = async (event) => {
+  if (!selectedTeamMatch.value || !photoFile.value || photoFile.value.length === 0) return
+
+  uploadingPhoto.value = true
+  try {
+    const photoUrl = await uploadImage(photoFile.value[0], `teamMatches/${selectedTeamMatch.value.id}`)
+    
+    await teamMatchesStore.updateTeamMatch(selectedTeamMatch.value.id, {
+      ...selectedTeamMatch.value,
+      photoUrl: photoUrl
+    })
+    
+    await teamMatchesStore.fetchTeamMatches()
+    selectedTeamMatch.value = await teamMatchesStore.getTeamMatch(selectedTeamMatch.value.id)
+    photoFile.value = null
+  } catch (error) {
+    console.error('Error uploading photo:', error)
+  } finally {
+    uploadingPhoto.value = false
+  }
 }
+
+const viewTeamMatch = (teamMatch) => {
+  selectedTeamMatch.value = teamMatch
+  showTeamMatchDetail.value = true
+}
+
+const selectedTeamMatch = ref(null)
+const showTeamMatchDetail = ref(false)
+const photoFile = ref(null)
+const uploadingPhoto = ref(false)
 
 const calculateTeamMatches = async () => {
   if (!selectedTournament.value) return
@@ -389,7 +486,8 @@ const calculateTeamMatches = async () => {
         team1Score: team1Score,
         team2Score: team2Score,
         date: matchDate,
-        round: round
+        round: round,
+        photoUrl: existingTeamMatch.photoUrl || null
       })
     } else {
       await teamMatchesStore.addTeamMatch({
@@ -400,7 +498,8 @@ const calculateTeamMatches = async () => {
         team1Score: team1Score,
         team2Score: team2Score,
         date: matchDate,
-        notes: 'Auto-calculated from individual matches'
+        notes: 'Auto-calculated from individual matches',
+        photoUrl: null
       })
     }
   }

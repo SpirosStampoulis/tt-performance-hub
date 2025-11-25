@@ -3,7 +3,7 @@
     <v-row>
       <v-col>
         <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="$router.back()">
-          Back to Opponents
+          Back to Players
         </v-btn>
       </v-col>
     </v-row>
@@ -20,7 +20,26 @@
             <v-chip :color="getStyleColor(opponent.playingStyle)" class="mt-2">
               {{ opponent.playingStyle }}
             </v-chip>
-            <div class="text-subtitle-1 mt-4">{{ opponent.club || 'No club' }}</div>
+            <div class="text-subtitle-1 mt-4">{{ opponent.club || 'No team' }}</div>
+            
+            <v-divider class="my-4"></v-divider>
+            
+            <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.alphaRanking || opponent.topspinRanking" class="text-center">
+              <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints" class="mb-3">
+                <div class="text-caption text-medium-emphasis mb-1">MTTA Ranking</div>
+                <div v-if="opponent.mttaStartPosition" class="text-body-2">Start: {{ opponent.mttaStartPosition }}</div>
+                <div v-if="opponent.mttaCurrentPosition" class="text-body-2">Current: {{ opponent.mttaCurrentPosition }}</div>
+                <div v-if="opponent.mttaTotalPoints" class="text-body-2">Points: {{ opponent.mttaTotalPoints }}</div>
+              </div>
+              <div v-if="opponent.alphaRanking" class="mb-2">
+                <div class="text-caption text-medium-emphasis">Alpha Ranking</div>
+                <div class="text-h6">{{ opponent.alphaRanking }}</div>
+              </div>
+              <div v-if="opponent.topspinRanking" class="mb-2">
+                <div class="text-caption text-medium-emphasis">Topspin Ranking</div>
+                <div class="text-h6">{{ opponent.topspinRanking }}</div>
+              </div>
+            </div>
           </v-card-text>
         </v-card>
 
@@ -95,7 +114,7 @@
                 </v-avatar>
               </template>
               <v-list-item-title>
-                {{ getMatchResult(match) }} - {{ getScoreSummary(match) }}
+                {{ getMatchResult(match) }} vs {{ getOpponentName(match) }} - {{ getScoreSummary(match) }}
               </v-list-item-title>
               <v-list-item-subtitle>
                 {{ formatDate(match.date) }}
@@ -163,7 +182,10 @@ const weaknessForm = ref('')
 const weaknesses = ref('')
 
 onMounted(async () => {
-  await matchesStore.fetchMatches()
+  await Promise.all([
+    matchesStore.fetchMatches(),
+    opponentsStore.fetchOpponents()
+  ])
   opponent.value = await opponentsStore.getOpponent(route.params.id)
   weaknesses.value = opponent.value?.weaknesses || ''
   weaknessForm.value = weaknesses.value
@@ -180,10 +202,25 @@ const headToHead = computed(() => {
 const averageScoreDiff = computed(() => {
   if (matches.value.length === 0) return 0
   
+  const playerId = route.params.id
   const totalDiff = matches.value.reduce((sum, match) => {
-    const myTotal = match.scores.reduce((s, score) => s + score.myScore, 0)
-    const oppTotal = match.scores.reduce((s, score) => s + score.oppScore, 0)
-    return sum + (myTotal - oppTotal)
+    const isPlayer1 = match.player1Id === playerId || match.opponentId === playerId
+    
+    let player1Sets = 0
+    let player2Sets = 0
+    
+    match.scores.forEach(score => {
+      const p1Score = score.player1Score || score.myScore || 0
+      const p2Score = score.player2Score || score.oppScore || 0
+      if (p1Score > p2Score) player1Sets++
+      else if (p2Score > p1Score) player2Sets++
+    })
+    
+    if (isPlayer1) {
+      return sum + (player1Sets - player2Sets)
+    } else {
+      return sum + (player2Sets - player1Sets)
+    }
   }, 0)
   
   return (totalDiff / matches.value.length).toFixed(1)
@@ -208,15 +245,52 @@ const getStyleColor = (style) => {
 }
 
 const getMatchResult = (match) => {
-  const myTotal = match.scores.reduce((sum, s) => sum + s.myScore, 0)
-  const oppTotal = match.scores.reduce((sum, s) => sum + s.oppScore, 0)
-  return myTotal > oppTotal ? 'Win' : 'Loss'
+  const playerId = route.params.id
+  const isPlayer1 = match.player1Id === playerId || match.opponentId === playerId
+  
+  let player1Sets = 0
+  let player2Sets = 0
+  
+  match.scores.forEach(score => {
+    const p1Score = score.player1Score || score.myScore || 0
+    const p2Score = score.player2Score || score.oppScore || 0
+    if (p1Score > p2Score) player1Sets++
+    else if (p2Score > p1Score) player2Sets++
+  })
+  
+  if (isPlayer1) {
+    return player1Sets > player2Sets ? 'Win' : 'Loss'
+  } else {
+    return player2Sets > player1Sets ? 'Win' : 'Loss'
+  }
 }
 
 const getScoreSummary = (match) => {
-  const myTotal = match.scores.reduce((sum, s) => sum + s.myScore, 0)
-  const oppTotal = match.scores.reduce((sum, s) => sum + s.oppScore, 0)
-  return `${myTotal}-${oppTotal}`
+  const playerId = route.params.id
+  const isPlayer1 = match.player1Id === playerId || match.opponentId === playerId
+  
+  let player1Sets = 0
+  let player2Sets = 0
+  
+  match.scores.forEach(score => {
+    const p1Score = score.player1Score || score.myScore || 0
+    const p2Score = score.player2Score || score.oppScore || 0
+    if (p1Score > p2Score) player1Sets++
+    else if (p2Score > p1Score) player2Sets++
+  })
+  
+  if (isPlayer1) {
+    return `${player1Sets}-${player2Sets}`
+  } else {
+    return `${player2Sets}-${player1Sets}`
+  }
+}
+
+const getOpponentName = (match) => {
+  const playerId = route.params.id
+  const opponentId = match.player1Id === playerId ? match.player2Id : (match.player2Id === playerId ? match.player1Id : match.opponentId)
+  const opponentPlayer = opponentsStore.opponents.find(o => o.id === opponentId)
+  return opponentPlayer ? opponentPlayer.name : 'Unknown'
 }
 
 const saveWeaknesses = async () => {

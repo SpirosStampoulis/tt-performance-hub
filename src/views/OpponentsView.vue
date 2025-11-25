@@ -3,7 +3,7 @@
     <v-row class="mb-4">
       <v-col>
         <v-btn color="primary" prepend-icon="mdi-plus" @click="openOpponentDialog()">
-          Add New Player
+          Add Player
         </v-btn>
       </v-col>
     </v-row>
@@ -48,6 +48,17 @@
                   {{ opponent.playingStyle }}
                 </v-chip>
                 <div class="text-caption mt-2">{{ opponent.club || 'No team' }}</div>
+                <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.alphaRanking || opponent.topspinRanking" class="text-caption mt-1">
+                  <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints" class="mb-1">
+                    <span v-if="opponent.mttaStartPosition" class="mr-2">MTTA Start: {{ opponent.mttaStartPosition }}</span>
+                    <span v-if="opponent.mttaCurrentPosition" class="mr-2">Current: {{ opponent.mttaCurrentPosition }}</span>
+                    <span v-if="opponent.mttaTotalPoints">Points: {{ opponent.mttaTotalPoints }}</span>
+                  </div>
+                  <div>
+                    <span v-if="opponent.alphaRanking" class="mr-2">Alpha: {{ opponent.alphaRanking }}</span>
+                    <span v-if="opponent.topspinRanking">Topspin: {{ opponent.topspinRanking }}</span>
+                  </div>
+                </div>
                 <div class="text-caption text-medium-emphasis">
                   {{ getMatchCount(opponent.id) }} matches
                 </div>
@@ -66,7 +77,7 @@
 
     <v-dialog v-model="opponentDialog" max-width="600" persistent>
       <v-card>
-        <v-card-title>{{ editingOpponent ? 'Edit Player' : 'Add New Player' }}</v-card-title>
+        <v-card-title>{{ editingOpponent ? 'Edit Player' : 'Add Player' }}</v-card-title>
         <v-card-text>
           <v-form ref="opponentForm">
             <v-text-field
@@ -97,6 +108,52 @@
                 <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true"></v-btn>
               </template>
             </v-select>
+
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title class="text-subtitle-2">MTTA Ranking</v-card-title>
+              <v-card-text>
+                <v-text-field
+                  v-model.number="formData.mttaStartPosition"
+                  label="Start Position"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="e.g., 150"
+                ></v-text-field>
+                <v-text-field
+                  v-model.number="formData.mttaCurrentPosition"
+                  label="Current Position"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="e.g., 145"
+                ></v-text-field>
+                <v-text-field
+                  v-model.number="formData.mttaTotalPoints"
+                  label="Total Points"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="e.g., 2500"
+                ></v-text-field>
+              </v-card-text>
+            </v-card>
+
+            <v-text-field
+              v-model.number="formData.alphaRanking"
+              label="Alpha Ranking"
+              type="number"
+              variant="outlined"
+              placeholder="e.g., 1200"
+            ></v-text-field>
+
+            <v-text-field
+              v-model.number="formData.topspinRanking"
+              label="Topspin Ranking"
+              type="number"
+              variant="outlined"
+              placeholder="e.g., 1800"
+            ></v-text-field>
 
             <v-file-input
               v-model="photoFile"
@@ -200,6 +257,11 @@ const formData = ref({
   name: '',
   playingStyle: '',
   club: '',
+  mttaStartPosition: null,
+  mttaCurrentPosition: null,
+  mttaTotalPoints: null,
+  alphaRanking: null,
+  topspinRanking: null,
   notes: '',
   photoUrl: ''
 })
@@ -257,6 +319,11 @@ const openOpponentDialog = (opponent = null) => {
       name: '',
       playingStyle: '',
       club: '',
+      mttaStartPosition: null,
+      mttaCurrentPosition: null,
+      mttaTotalPoints: null,
+      alphaRanking: null,
+      topspinRanking: null,
       notes: '',
       photoUrl: ''
     }

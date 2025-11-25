@@ -28,7 +28,7 @@ export const useOpponentsStore = defineStore('opponents', () => {
         ...doc.data()
       }))
     } catch (error) {
-      console.error('Error fetching opponents:', error)
+      console.error('Error fetching players:', error)
     } finally {
       loading.value = false
     }
@@ -46,7 +46,7 @@ export const useOpponentsStore = defineStore('opponents', () => {
       }
       return null
     } catch (error) {
-      console.error('Error fetching opponent:', error)
+      console.error('Error fetching player:', error)
       return null
     }
   }
@@ -60,7 +60,7 @@ export const useOpponentsStore = defineStore('opponents', () => {
       await fetchOpponents()
       return docRef.id
     } catch (error) {
-      console.error('Error adding opponent:', error)
+      console.error('Error adding player:', error)
       throw error
     }
   }
@@ -71,7 +71,7 @@ export const useOpponentsStore = defineStore('opponents', () => {
       await updateDoc(docRef, opponentData)
       await fetchOpponents()
     } catch (error) {
-      console.error('Error updating opponent:', error)
+      console.error('Error updating player:', error)
       throw error
     }
   }
@@ -81,7 +81,7 @@ export const useOpponentsStore = defineStore('opponents', () => {
       await deleteDoc(doc(db, 'opponents', id))
       await fetchOpponents()
     } catch (error) {
-      console.error('Error deleting opponent:', error)
+      console.error('Error deleting player:', error)
       throw error
     }
   }

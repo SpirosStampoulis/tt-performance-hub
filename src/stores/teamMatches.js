@@ -72,10 +72,15 @@ export const useTeamMatchesStore = defineStore('teamMatches', () => {
   const updateTeamMatch = async (id, teamMatchData) => {
     try {
       const docRef = doc(db, 'teamMatches', id)
-      await updateDoc(docRef, {
-        ...teamMatchData,
-        date: Timestamp.fromDate(teamMatchData.date)
-      })
+      const updateData = { ...teamMatchData }
+      
+      if (updateData.date instanceof Date) {
+        updateData.date = Timestamp.fromDate(updateData.date)
+      } else if (updateData.date && typeof updateData.date.toDate === 'function') {
+        updateData.date = Timestamp.fromDate(updateData.date.toDate())
+      }
+      
+      await updateDoc(docRef, updateData)
       await fetchTeamMatches()
     } catch (error) {
       console.error('Error updating team match:', error)

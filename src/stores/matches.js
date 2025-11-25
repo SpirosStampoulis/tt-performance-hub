@@ -93,8 +93,10 @@ export const useMatchesStore = defineStore('matches', () => {
     }
   }
 
-  const getMatchesByOpponent = (opponentId) => {
-    return matches.value.filter(m => m.opponentId === opponentId)
+  const getMatchesByOpponent = (playerId) => {
+    return matches.value.filter(m => 
+      m.player1Id === playerId || m.player2Id === playerId || m.opponentId === playerId
+    )
   }
 
   const totalMatches = computed(() => matches.value.length)
@@ -121,24 +123,38 @@ export const useMatchesStore = defineStore('matches', () => {
   })
 
 
-  const headToHeadStats = (opponentId) => {
-    const opponentMatches = getMatchesByOpponent(opponentId)
+  const headToHeadStats = (playerId) => {
+    const playerMatches = getMatchesByOpponent(playerId)
     let wins = 0
     let losses = 0
     
-    opponentMatches.forEach(match => {
-      const myTotalScore = match.scores.reduce((sum, s) => sum + s.myScore, 0)
-      const oppTotalScore = match.scores.reduce((sum, s) => sum + s.oppScore, 0)
+    playerMatches.forEach(match => {
+      const isPlayer1 = match.player1Id === playerId || match.opponentId === playerId
       
-      if (myTotalScore > oppTotalScore) wins++
-      else losses++
+      let player1Sets = 0
+      let player2Sets = 0
+      
+      match.scores.forEach(score => {
+        const p1Score = score.player1Score || score.myScore || 0
+        const p2Score = score.player2Score || score.oppScore || 0
+        if (p1Score > p2Score) player1Sets++
+        else if (p2Score > p1Score) player2Sets++
+      })
+      
+      if (isPlayer1) {
+        if (player1Sets > player2Sets) wins++
+        else losses++
+      } else {
+        if (player2Sets > player1Sets) wins++
+        else losses++
+      }
     })
     
     return { 
       wins, 
       losses, 
-      total: opponentMatches.length,
-      winRate: opponentMatches.length > 0 ? ((wins / opponentMatches.length) * 100).toFixed(1) : 0
+      total: playerMatches.length,
+      winRate: playerMatches.length > 0 ? ((wins / playerMatches.length) * 100).toFixed(1) : 0
     }
   }
 

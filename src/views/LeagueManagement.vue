@@ -1,0 +1,411 @@
+<template>
+  <v-container>
+    <v-row class="mb-4">
+      <v-col cols="12" md="6">
+        <v-select
+          v-model="selectedTournament"
+          :items="leagueTournaments"
+          item-title="displayName"
+          item-value="id"
+          label="Select League"
+          variant="outlined"
+          density="comfortable"
+        ></v-select>
+      </v-col>
+      <v-col cols="12" md="6" v-if="selectedTournament">
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTeamDialog = true">
+          Add Team
+        </v-btn>
+      </v-col>
+    </v-row>
+
+    <v-row v-if="selectedTournament">
+      <v-col cols="12" md="8">
+        <v-card class="mb-4">
+          <v-card-title>
+            <v-icon class="mr-2">mdi-trophy</v-icon>
+            Team Matches
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text v-if="tournamentTeamMatches.length === 0" class="text-center text-medium-emphasis py-8">
+            No team matches calculated yet. Click "Calculate Team Matches" to process individual matches.
+          </v-card-text>
+          <v-list v-else>
+            <v-list-group v-for="round in groupedByRound" :key="round.round">
+              <template v-slot:activator="{ props }">
+                <v-list-item v-bind="props" :title="round.round"></v-list-item>
+              </template>
+              <v-list-item
+                v-for="teamMatch in round.matches"
+                :key="teamMatch.id"
+                @click="viewTeamMatch(teamMatch)"
+              >
+                <v-list-item-title>
+                  {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
+                </v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ formatDate(teamMatch.date) }} • Score: {{ teamMatch.team1Score || teamMatch.myTeamScore }}-{{ teamMatch.team2Score || teamMatch.opponentTeamScore }}
+                </v-list-item-subtitle>
+                <template v-slot:append>
+                  <v-chip size="small" :color="(teamMatch.team1Score || teamMatch.myTeamScore) >= 4 ? 'success' : 'error'">
+                    {{ (teamMatch.team1Score || teamMatch.myTeamScore) >= 4 ? 'Team 1 Won' : 'Team 2 Won' }}
+                  </v-chip>
+                </template>
+              </v-list-item>
+            </v-list-group>
+          </v-list>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="4">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-podium</v-icon>
+            Standings
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text v-if="tournamentTeams.length === 0" class="text-center text-medium-emphasis">
+            No teams added yet
+          </v-card-text>
+          <v-table v-else density="compact">
+            <thead>
+              <tr>
+                <th class="text-left">Pos</th>
+                <th class="text-left">Team</th>
+                <th class="text-center">P</th>
+                <th class="text-center">W</th>
+                <th class="text-center">L</th>
+                <th class="text-center">Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(team, index) in standings" :key="team.id" :class="{ 'bg-primary-lighten-4': team.isMyTeam }">
+                <td>{{ index + 1 }}</td>
+                <td>{{ team.name }}</td>
+                <td class="text-center">{{ team.played }}</td>
+                <td class="text-center">{{ team.won }}</td>
+                <td class="text-center">{{ team.lost }}</td>
+                <td class="text-center"><strong>{{ team.points }}</strong></td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card>
+
+        <v-card class="mt-4" v-if="tournamentTeams.length > 0">
+          <v-card-title>Teams</v-card-title>
+          <v-divider></v-divider>
+          <v-list density="compact">
+            <v-list-item v-for="team in tournamentTeams" :key="team.id">
+              <v-list-item-title>
+                {{ team.name }}
+                <v-chip v-if="team.isMyTeam" size="x-small" color="primary" class="ml-2">My Team</v-chip>
+              </v-list-item-title>
+              <template v-slot:append>
+                <v-btn icon="mdi-delete" size="x-small" @click="confirmDeleteTeam(team)"></v-btn>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <v-dialog v-model="showTeamDialog" max-width="500">
+      <v-card>
+        <v-card-title>Add Team</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newTeam.name"
+            label="Team Name"
+            variant="outlined"
+          ></v-text-field>
+          <v-checkbox
+            v-model="newTeam.isMyTeam"
+            label="This is my team"
+          ></v-checkbox>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="showTeamDialog = false">Cancel</v-btn>
+          <v-btn color="primary" @click="addTeam">Add</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+
+    <v-dialog v-model="deleteTeamDialog" max-width="400">
+      <v-card>
+        <v-card-title>Delete Team</v-card-title>
+        <v-card-text>Are you sure you want to delete this team?</v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="deleteTeamDialog = false">Cancel</v-btn>
+          <v-btn color="error" @click="deleteTeam">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { useTournamentsStore } from '../stores/tournaments'
+import { useTeamsStore } from '../stores/teams'
+import { useTeamMatchesStore } from '../stores/teamMatches'
+import { useMatchesStore } from '../stores/matches'
+import { formatDate } from '../utils/date'
+
+const tournamentsStore = useTournamentsStore()
+const teamsStore = useTeamsStore()
+const teamMatchesStore = useTeamMatchesStore()
+const matchesStore = useMatchesStore()
+
+const selectedTournament = ref(null)
+const showTeamDialog = ref(false)
+const deleteTeamDialog = ref(false)
+const teamToDelete = ref(null)
+
+const newTeam = ref({
+  name: '',
+  isMyTeam: false
+})
+
+
+onMounted(async () => {
+  await Promise.all([
+    tournamentsStore.fetchTournaments(),
+    teamsStore.fetchTeams(),
+    teamMatchesStore.fetchTeamMatches(),
+    matchesStore.fetchMatches()
+  ])
+  
+  if (selectedTournament.value) {
+    await calculateTeamMatches()
+  }
+})
+
+watch(selectedTournament, async (newVal) => {
+  if (newVal) {
+    await matchesStore.fetchMatches()
+    await calculateTeamMatches()
+  }
+})
+
+watch(() => matchesStore.matches, async () => {
+  if (selectedTournament.value) {
+    await calculateTeamMatches()
+  }
+}, { deep: true })
+
+const leagueTournaments = computed(() => {
+  return tournamentsStore.tournaments
+    .filter(t => t.type === 'League')
+    .map(t => ({
+      ...t,
+      displayName: `${t.name} (${t.year})`
+    }))
+})
+
+const tournamentTeams = computed(() => {
+  if (!selectedTournament.value) return []
+  return teamsStore.teams.filter(t => t.tournamentId === selectedTournament.value)
+})
+
+
+const tournamentTeamMatches = computed(() => {
+  if (!selectedTournament.value) return []
+  return teamMatchesStore.getTeamMatchesByTournament(selectedTournament.value)
+})
+
+const groupedByRound = computed(() => {
+  const rounds = {}
+  tournamentTeamMatches.value.forEach(tm => {
+    if (!rounds[tm.round]) {
+      rounds[tm.round] = []
+    }
+    rounds[tm.round].push(tm)
+  })
+  
+  return Object.keys(rounds).map(round => ({
+    round,
+    matches: rounds[round]
+  }))
+})
+
+const standings = computed(() => {
+  const teamStats = {}
+  
+  tournamentTeams.value.forEach(team => {
+    teamStats[team.id] = {
+      id: team.id,
+      name: team.name,
+      isMyTeam: team.isMyTeam,
+      played: 0,
+      won: 0,
+      lost: 0,
+      points: 0
+    }
+  })
+  
+  tournamentTeamMatches.value.forEach(tm => {
+    const team1Id = tm.team1Id || tm.myTeamId
+    const team2Id = tm.team2Id || tm.opponentTeamId
+    const team1Score = tm.team1Score !== undefined ? tm.team1Score : tm.myTeamScore
+    const team2Score = tm.team2Score !== undefined ? tm.team2Score : tm.opponentTeamScore
+    
+    if (teamStats[team1Id]) {
+      teamStats[team1Id].played++
+      if (team1Score >= 4) {
+        teamStats[team1Id].won++
+        teamStats[team1Id].points += 3
+      } else {
+        teamStats[team1Id].lost++
+      }
+    }
+    
+    if (teamStats[team2Id]) {
+      teamStats[team2Id].played++
+      if (team2Score >= 4) {
+        teamStats[team2Id].won++
+        teamStats[team2Id].points += 3
+      } else {
+        teamStats[team2Id].lost++
+      }
+    }
+  })
+  
+  return Object.values(teamStats).sort((a, b) => b.points - a.points)
+})
+
+
+const addTeam = async () => {
+  try {
+    await teamsStore.addTeam({
+      ...newTeam.value,
+      tournamentId: selectedTournament.value
+    })
+    showTeamDialog.value = false
+    newTeam.value = { name: '', isMyTeam: false }
+  } catch (error) {
+    console.error('Error adding team:', error)
+  }
+}
+
+const confirmDeleteTeam = (team) => {
+  teamToDelete.value = team
+  deleteTeamDialog.value = true
+}
+
+const deleteTeam = async () => {
+  try {
+    await teamsStore.deleteTeam(teamToDelete.value.id)
+    deleteTeamDialog.value = false
+    teamToDelete.value = null
+  } catch (error) {
+    console.error('Error deleting team:', error)
+  }
+}
+
+
+const getTeamName = (teamId) => {
+  const team = tournamentTeams.value.find(t => t.id === teamId)
+  return team ? team.name : 'Unknown'
+}
+
+const viewTeamMatch = (teamMatch) => {
+  console.log('View team match:', teamMatch)
+}
+
+const calculateTeamMatches = async () => {
+  if (!selectedTournament.value) return
+
+  const tournamentMatches = matchesStore.matches.filter(
+    m => m.tournamentId === selectedTournament.value && m.round
+  )
+
+  const rounds = {}
+  tournamentMatches.forEach(match => {
+    if (!rounds[match.round]) {
+      rounds[match.round] = []
+    }
+    rounds[match.round].push(match)
+  })
+
+  for (const [round, matches] of Object.entries(rounds)) {
+    if (matches.length < 6) continue
+
+    const teamScores = {}
+    let team1Id = null
+    let team2Id = null
+
+    matches.forEach(match => {
+      const player1TeamId = match.player1TeamId
+      const player2TeamId = match.player2TeamId
+
+      if (!player1TeamId || !player2TeamId) return
+
+      if (!team1Id) team1Id = player1TeamId
+      if (!team2Id && player2TeamId !== team1Id) team2Id = player2TeamId
+
+      if (!teamScores[player1TeamId]) teamScores[player1TeamId] = 0
+      if (!teamScores[player2TeamId]) teamScores[player2TeamId] = 0
+
+      let player1Sets = 0
+      let player2Sets = 0
+
+      match.scores.forEach(score => {
+        const p1Score = score.player1Score || score.myScore || 0
+        const p2Score = score.player2Score || score.oppScore || 0
+        if (p1Score > p2Score) player1Sets++
+        else if (p2Score > p1Score) player2Sets++
+      })
+
+      if (player1Sets > player2Sets) {
+        teamScores[player1TeamId]++
+      } else if (player2Sets > player1Sets) {
+        teamScores[player2TeamId]++
+      }
+    })
+
+    if (!team1Id || !team2Id) continue
+
+    const team1Score = teamScores[team1Id] || 0
+    const team2Score = teamScores[team2Id] || 0
+
+    if (team1Score + team2Score < 6) continue
+
+    const existingTeamMatch = teamMatchesStore.teamMatches.find(
+      tm => tm.tournamentId === selectedTournament.value &&
+            tm.round === round &&
+            ((tm.team1Id === team1Id && tm.team2Id === team2Id) ||
+             (tm.team1Id === team2Id && tm.team2Id === team1Id))
+    )
+
+    const matchDate = matches[0].date
+
+    if (existingTeamMatch) {
+      await teamMatchesStore.updateTeamMatch(existingTeamMatch.id, {
+        team1Id: team1Id,
+        team2Id: team2Id,
+        team1Score: team1Score,
+        team2Score: team2Score,
+        date: matchDate,
+        round: round
+      })
+    } else {
+      await teamMatchesStore.addTeamMatch({
+        tournamentId: selectedTournament.value,
+        round: round,
+        team1Id: team1Id,
+        team2Id: team2Id,
+        team1Score: team1Score,
+        team2Score: team2Score,
+        date: matchDate,
+        notes: 'Auto-calculated from individual matches'
+      })
+    }
+  }
+
+  await teamMatchesStore.fetchTeamMatches()
+}
+</script>
+

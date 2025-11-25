@@ -338,21 +338,38 @@ const closeOpponentDialog = () => {
 }
 
 const saveOpponent = async () => {
-  const { valid } = await opponentForm.value.validate()
-  if (!valid) return
+  if (opponentForm.value) {
+    const { valid } = await opponentForm.value.validate()
+    if (!valid) return
+  }
 
   saving.value = true
   try {
-    let photoUrl = formData.value.photoUrl
+    let photoUrl = formData.value.photoUrl || null
 
     if (photoFile.value && photoFile.value.length > 0) {
       photoUrl = await uploadImage(photoFile.value[0], 'opponents')
     }
 
     const opponentData = {
-      ...formData.value,
-      photoUrl
+      name: formData.value.name,
+      playingStyle: formData.value.playingStyle,
+      club: formData.value.club || null,
+      mttaStartPosition: formData.value.mttaStartPosition || null,
+      mttaCurrentPosition: formData.value.mttaCurrentPosition || null,
+      mttaTotalPoints: formData.value.mttaTotalPoints || null,
+      alphaRanking: formData.value.alphaRanking || null,
+      topspinRanking: formData.value.topspinRanking || null,
+      notes: formData.value.notes || null,
+      photoUrl: photoUrl || null
     }
+
+    // Remove undefined values
+    Object.keys(opponentData).forEach(key => {
+      if (opponentData[key] === undefined) {
+        opponentData[key] = null
+      }
+    })
 
     if (editingOpponent.value) {
       await opponentsStore.updateOpponent(editingOpponent.value.id, opponentData)
@@ -363,6 +380,7 @@ const saveOpponent = async () => {
     closeOpponentDialog()
   } catch (error) {
     console.error('Error saving opponent:', error)
+    alert('Error saving player: ' + error.message)
   } finally {
     saving.value = false
   }

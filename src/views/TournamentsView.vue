@@ -39,6 +39,9 @@
             <v-chip size="small" class="ml-2" :color="tournament.type === 'League' ? 'primary' : 'secondary'">
               {{ tournament.type }}
             </v-chip>
+            <v-chip v-if="tournament.isDefault" size="small" color="success" class="ml-2" prepend-icon="mdi-star">
+              Default
+            </v-chip>
           </v-card-title>
           <v-card-subtitle>
             <v-icon size="small">mdi-calendar</v-icon> {{ tournament.year }}
@@ -87,6 +90,13 @@
               :rules="[v => !!v || 'Year is required']"
               placeholder="2024"
             ></v-text-field>
+
+            <v-checkbox
+              v-model="formData.isDefault"
+              label="Set as default tournament"
+              hint="This tournament will be pre-selected in dropdowns"
+              persistent-hint
+            ></v-checkbox>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -135,7 +145,8 @@ const tournamentForm = ref(null)
 const formData = ref({
   name: '',
   type: '',
-  year: new Date().getFullYear()
+  year: new Date().getFullYear(),
+  isDefault: false
 })
 
 onMounted(async () => {
@@ -172,7 +183,8 @@ const openTournamentDialog = (tournament = null) => {
     formData.value = {
       name: '',
       type: '',
-      year: new Date().getFullYear()
+      year: new Date().getFullYear(),
+      isDefault: false
     }
   }
   tournamentDialog.value = true
@@ -188,6 +200,16 @@ const saveTournament = async () => {
   if (!valid) return
 
   try {
+    // If setting this as default, unset all other defaults
+    if (formData.value.isDefault) {
+      const allTournaments = tournamentsStore.tournaments
+      const otherDefaults = allTournaments.filter(t => t.isDefault && t.id !== editingTournament.value?.id)
+      
+      for (const tournament of otherDefaults) {
+        await tournamentsStore.updateTournament(tournament.id, { ...tournament, isDefault: false })
+      }
+    }
+
     if (editingTournament.value) {
       await tournamentsStore.updateTournament(editingTournament.value.id, formData.value)
     } else {

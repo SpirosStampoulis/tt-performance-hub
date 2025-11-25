@@ -218,6 +218,40 @@
               variant="outlined"
               rows="3"
             ></v-textarea>
+
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title class="text-subtitle-2">YouTube Video</v-card-title>
+              <v-card-text>
+                <v-text-field
+                  v-model="formData.youtubeUrl"
+                  label="YouTube Video URL"
+                  placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                  variant="outlined"
+                  prepend-inner-icon="mdi-youtube"
+                  hint="Paste a YouTube URL to add a video to this match"
+                  persistent-hint
+                ></v-text-field>
+                <div v-if="formData.youtubeUrl && getYouTubeEmbedUrl(formData.youtubeUrl)" class="mt-4">
+                  <div class="text-caption text-medium-emphasis mb-2">Video Preview:</div>
+                  <div class="video-preview-container">
+                    <iframe
+                      :src="getYouTubeEmbedUrl(formData.youtubeUrl)"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                  <v-chip size="small" color="red" prepend-icon="mdi-youtube" class="mt-2">
+                    Video ready to save
+                  </v-chip>
+                </div>
+                <div v-else-if="formData.youtubeUrl" class="mt-2">
+                  <v-alert type="warning" density="compact">
+                    Please enter a valid YouTube URL
+                  </v-alert>
+                </div>
+              </v-card-text>
+            </v-card>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -344,6 +378,7 @@ import { useOpponentsStore } from '../stores/opponents'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useTeamsStore } from '../stores/teams'
 import { formatDate } from '../utils/date'
+import { getYouTubeEmbedUrl } from '../utils/storage'
 
 const matchesStore = useMatchesStore()
 const opponentsStore = useOpponentsStore()
@@ -551,7 +586,8 @@ const openMatchDialog = (match = null) => {
     editingMatch.value = match
     formData.value = {
       ...match,
-      date: match.date.toISOString().split('T')[0]
+      date: match.date.toISOString().split('T')[0],
+      youtubeUrl: match.videoUrls && match.videoUrls.length > 0 ? match.videoUrls[0] : ''
     }
     setTimeout(() => {
       checkRoundDate()
@@ -560,8 +596,10 @@ const openMatchDialog = (match = null) => {
     }, 100)
   } else {
     editingMatch.value = null
+    // Find default tournament
+    const defaultTournament = tournamentsStore.tournaments.find(t => t.isDefault)
     formData.value = {
-      tournamentId: '',
+      tournamentId: defaultTournament ? defaultTournament.id : '',
       round: '',
       player1Id: '',
       player2Id: '',
@@ -572,6 +610,7 @@ const openMatchDialog = (match = null) => {
       notes: '',
       photos: [],
       videoUrls: [],
+      youtubeUrl: '',
       serveStats: { successRate: 0, returnPoints: 0 }
     }
   }
@@ -602,10 +641,31 @@ const saveMatch = async () => {
   const { valid } = await matchForm.value.validate()
   if (!valid) return
 
+  // Convert youtubeUrl to videoUrls array
+  const videoUrls = []
+  if (formData.value.youtubeUrl && formData.value.youtubeUrl.trim()) {
+    videoUrls.push(formData.value.youtubeUrl.trim())
+  }
+  // If editing and there were existing videos, preserve them unless we're replacing
+  if (editingMatch.value && editingMatch.value.videoUrls && editingMatch.value.videoUrls.length > 0) {
+    // If we have a new URL, replace the first one, otherwise keep existing
+    if (formData.value.youtubeUrl && formData.value.youtubeUrl.trim()) {
+      // Replace first video with new one, keep others
+      videoUrls.push(...(editingMatch.value.videoUrls.slice(1)))
+    } else {
+      // Keep existing videos
+      videoUrls.push(...editingMatch.value.videoUrls)
+    }
+  }
+
   const matchData = {
     ...formData.value,
-    date: new Date(formData.value.date)
+    date: new Date(formData.value.date),
+    videoUrls: videoUrls
   }
+  
+  // Remove youtubeUrl from the data we save (it's just for the form)
+  delete matchData.youtubeUrl
 
   try {
     if (editingMatch.value) {
@@ -730,4 +790,23 @@ const getTeamName = (teamId) => {
   return team ? team.name : ''
 }
 </script>
+
+<style scoped>
+.video-preview-container {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #000;
+}
+
+.video-preview-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>
 

@@ -162,13 +162,14 @@
               <v-card variant="outlined" class="mb-4">
                 <v-card-title class="text-subtitle-1">Team Match Photo</v-card-title>
                 <v-card-text>
-                  <v-img 
-                    v-if="selectedTeamMatch.photoUrl" 
-                    :src="selectedTeamMatch.photoUrl" 
-                    aspect-ratio="16/9" 
-                    cover
-                    class="mb-2"
-                  ></v-img>
+                  <div v-if="selectedTeamMatch.photoUrl || photoPreview">
+                    <v-img 
+                      :src="photoPreview || selectedTeamMatch.photoUrl" 
+                      aspect-ratio="16/9" 
+                      cover
+                      class="mb-2"
+                    ></v-img>
+                  </div>
                   <div v-else class="text-center text-medium-emphasis py-4">
                     No photo uploaded yet
                   </div>
@@ -180,9 +181,20 @@
                     prepend-icon=""
                     prepend-inner-icon="mdi-camera"
                     :clearable="true"
-                    @change="handlePhotoUpload"
+                    @update:model-value="handlePhotoFileChange"
                   ></v-file-input>
                   <v-progress-linear v-if="uploadingPhoto" indeterminate class="mt-2"></v-progress-linear>
+                  <v-btn
+                    v-if="photoPreview"
+                    color="primary"
+                    block
+                    class="mt-2"
+                    @click="handlePhotoUpload"
+                    :loading="uploadingPhoto"
+                    :disabled="uploadingPhoto"
+                  >
+                    Upload Photo
+                  </v-btn>
                 </v-card-text>
               </v-card>
               
@@ -247,6 +259,16 @@ onMounted(async () => {
     matchesStore.fetchMatches()
   ])
   
+  // Set default tournament if not already set
+  if (!selectedTournament.value && leagueTournaments.value.length > 0) {
+    const defaultTournament = leagueTournaments.value.find(t => t.isDefault)
+    if (defaultTournament) {
+      selectedTournament.value = defaultTournament.id
+    } else {
+      selectedTournament.value = leagueTournaments.value[0].id
+    }
+  }
+  
   if (selectedTournament.value) {
     await calculateTeamMatches()
   }
@@ -273,6 +295,20 @@ const leagueTournaments = computed(() => {
       displayName: `${t.name} (${t.year})`
     }))
 })
+
+// Watch for changes to league tournaments and set default if needed
+watch(leagueTournaments, (newTournaments) => {
+  if (!selectedTournament.value && newTournaments.length > 0) {
+    // First try to find a default tournament
+    const defaultTournament = newTournaments.find(t => t.isDefault)
+    if (defaultTournament) {
+      selectedTournament.value = defaultTournament.id
+    } else {
+      // Fallback to first tournament if no default is set
+      selectedTournament.value = newTournaments[0].id
+    }
+  }
+}, { immediate: true })
 
 const tournamentTeams = computed(() => {
   if (!selectedTournament.value) return []
@@ -380,12 +416,56 @@ const getTeamName = (teamId) => {
   return team ? team.name : 'Unknown'
 }
 
-const handlePhotoUpload = async (event) => {
-  if (!selectedTeamMatch.value || !photoFile.value || photoFile.value.length === 0) return
+const getFileFromInput = (input) => {
+  if (!input) return null
+  
+  // Vuetify v-file-input returns an array of files
+  if (Array.isArray(input)) {
+    return input.length > 0 ? input[0] : null
+  }
+  
+  // Or it might be a FileList
+  if (input instanceof FileList) {
+    return input.length > 0 ? input[0] : null
+  }
+  
+  // Or a single File
+  if (input instanceof File) {
+    return input
+  }
+  
+  return null
+}
+
+const handlePhotoFileChange = (value) => {
+  const file = getFileFromInput(value || photoFile.value)
+  
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      photoPreview.value = e.target.result
+    }
+    reader.onerror = () => {
+      console.error('Error reading file')
+      photoPreview.value = null
+    }
+    reader.readAsDataURL(file)
+  } else {
+    photoPreview.value = null
+  }
+}
+
+const handlePhotoUpload = async () => {
+  const file = getFileFromInput(photoFile.value)
+  
+  if (!selectedTeamMatch.value || !file) {
+    alert('Please select a photo first')
+    return
+  }
 
   uploadingPhoto.value = true
   try {
-    const photoUrl = await uploadImage(photoFile.value[0], `teamMatches/${selectedTeamMatch.value.id}`)
+    const photoUrl = await uploadImage(file, `teamMatches/${selectedTeamMatch.value.id}`)
     
     await teamMatchesStore.updateTeamMatch(selectedTeamMatch.value.id, {
       ...selectedTeamMatch.value,
@@ -395,8 +475,10 @@ const handlePhotoUpload = async (event) => {
     await teamMatchesStore.fetchTeamMatches()
     selectedTeamMatch.value = await teamMatchesStore.getTeamMatch(selectedTeamMatch.value.id)
     photoFile.value = null
+    photoPreview.value = null
   } catch (error) {
     console.error('Error uploading photo:', error)
+    alert('Error uploading photo: ' + error.message)
   } finally {
     uploadingPhoto.value = false
   }
@@ -404,13 +486,17 @@ const handlePhotoUpload = async (event) => {
 
 const viewTeamMatch = (teamMatch) => {
   selectedTeamMatch.value = teamMatch
+  photoFile.value = null
+  photoPreview.value = null
   showTeamMatchDetail.value = true
 }
+
 
 const selectedTeamMatch = ref(null)
 const showTeamMatchDetail = ref(false)
 const photoFile = ref(null)
 const uploadingPhoto = ref(false)
+const photoPreview = ref(null)
 
 const calculateTeamMatches = async () => {
   if (!selectedTournament.value) return

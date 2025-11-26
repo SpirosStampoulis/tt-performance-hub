@@ -71,11 +71,32 @@
 
     <v-row>
       <v-col v-for="match in filteredMatches" :key="match.id" cols="12">
-        <v-card>
+        <v-card :class="{ 'border-scheduled': isScheduled(match) }">
           <v-card-text>
             <v-row align="center">
               <v-col>
-                <div class="text-h6">{{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}</div>
+                <div class="d-flex align-center mb-1">
+                  <div class="text-h6">
+                    <span v-if="match.player1Id && match.player2Id">
+                      {{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}
+                    </span>
+                    <span v-else-if="match.player1TeamId && match.player2TeamId">
+                      {{ getTeamName(match.player1TeamId) }} vs {{ getTeamName(match.player2TeamId) }}
+                    </span>
+                    <span v-else>
+                      Match TBD
+                    </span>
+                  </div>
+                  <v-chip
+                    v-if="isScheduled(match)"
+                    size="small"
+                    color="info"
+                    class="ml-2"
+                  >
+                    <v-icon start size="small">mdi-clock-outline</v-icon>
+                    Scheduled
+                  </v-chip>
+                </div>
                 <div class="text-subtitle-2 text-medium-emphasis">
                   {{ formatDate(match.date) }} • {{ getTournamentName(match.tournamentId) || 'Friendly Match' }}
                   <span v-if="match.round"> • {{ match.round }}</span>
@@ -85,15 +106,25 @@
                   vs
                   <v-chip size="x-small" class="ml-1">{{ getTeamName(match.player2TeamId) }}</v-chip>
                 </div>
+                <div v-if="isScheduled(match) && (!match.player1Id || !match.player2Id)" class="text-caption text-info mt-1">
+                  <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
+                  Players to be determined
+                </div>
               </v-col>
-              <v-col cols="auto">
+              <v-col cols="auto" v-if="!isScheduled(match)">
                 <div class="text-h5">{{ getSetsWon(match) }}</div>
                 <div class="text-caption text-medium-emphasis">{{ getSetBreakdown(match) }}</div>
+              </v-col>
+              <v-col cols="auto" v-else>
+                <v-chip color="info" variant="outlined">
+                  <v-icon start>mdi-calendar-clock</v-icon>
+                  Upcoming
+                </v-chip>
               </v-col>
               <v-col cols="auto">
                 <v-btn icon="mdi-pencil" variant="text" @click="openMatchDialog(match)"></v-btn>
                 <v-btn icon="mdi-delete" variant="text" color="error" @click="confirmDelete(match)"></v-btn>
-                <v-btn icon="mdi-arrow-right" variant="text" :to="`/matches/${match.id}`"></v-btn>
+                <v-btn v-if="!isScheduled(match)" icon="mdi-arrow-right" variant="text" :to="`/matches/${match.id}`"></v-btn>
               </v-col>
             </v-row>
           </v-card-text>
@@ -137,18 +168,57 @@
               variant="outlined"
               :rules="[v => !!v || 'Date is required']"
               :disabled="dateLocked"
-              :hint="dateLocked ? 'Date locked - same as other matches in this round' : ''"
-              persistent-hint
             ></v-text-field>
+
+            <v-alert v-if="isScheduledMatch && isLeagueMatch" type="info" variant="tonal" class="mb-4">
+              For scheduled matches, you can select teams first. Players can be added later when the match is played.
+            </v-alert>
+
+            <v-autocomplete
+              v-if="isLeagueMatch"
+              v-model="formData.player1TeamId"
+              :items="tournamentTeamsList"
+              item-title="name"
+              item-value="id"
+              label="Team 1"
+              variant="outlined"
+              :rules="isLeagueMatch && isScheduledMatch ? [v => !!v || 'Team 1 is required for scheduled league matches'] : []"
+              @update:model-value="onTeam1Selected"
+            >
+              <template v-slot:append>
+                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true"></v-btn>
+              </template>
+            </v-autocomplete>
+
+            <v-autocomplete
+              v-if="isLeagueMatch"
+              v-model="formData.player2TeamId"
+              :items="tournamentTeamsList"
+              item-title="name"
+              item-value="id"
+              label="Team 2"
+              variant="outlined"
+              :rules="isLeagueMatch && isScheduledMatch ? [v => !!v || 'Team 2 is required for scheduled league matches'] : []"
+              @update:model-value="onTeam2Selected"
+            >
+              <template v-slot:append>
+                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true"></v-btn>
+              </template>
+            </v-autocomplete>
 
             <v-autocomplete
               v-model="formData.player1Id"
-              :items="opponentsList"
+              :items="filteredPlayer1List"
               item-title="name"
               item-value="id"
               label="Player 1"
               variant="outlined"
-              :rules="[v => !!v || 'Player 1 is required']"
+              :rules="[
+                isScheduledMatch ? null : (v => !!v || 'Player 1 is required'),
+                v => validatePlayerTeam(v, formData.player1TeamId, 'Player 1')
+              ].filter(r => r !== null)"
+              :hint="getPlayer1Hint()"
+              persistent-hint
               @update:model-value="onPlayer1Selected"
             >
               <template v-slot:append>
@@ -158,12 +228,17 @@
 
             <v-autocomplete
               v-model="formData.player2Id"
-              :items="opponentsList"
+              :items="filteredPlayer2List"
               item-title="name"
               item-value="id"
               label="Player 2"
               variant="outlined"
-              :rules="[v => !!v || 'Player 2 is required']"
+              :rules="[
+                isScheduledMatch ? null : (v => !!v || 'Player 2 is required'),
+                v => validatePlayerTeam(v, formData.player2TeamId, 'Player 2')
+              ].filter(r => r !== null)"
+              :hint="getPlayer2Hint()"
+              persistent-hint
               @update:model-value="onPlayer2Selected"
             >
               <template v-slot:append>
@@ -171,7 +246,14 @@
               </template>
             </v-autocomplete>
 
-            <v-card variant="outlined" class="mb-4">
+            <v-checkbox
+              v-model="isScheduledMatch"
+              label="This is a scheduled match (no scores yet)"
+              class="mb-2"
+              @update:model-value="onScheduledMatchChange"
+            ></v-checkbox>
+
+            <v-card variant="outlined" class="mb-4" v-if="!isScheduledMatch">
               <v-card-title class="text-subtitle-1">Scores</v-card-title>
               <v-card-text>
                 <v-row v-for="(score, index) in formData.scores" :key="index" align="center">
@@ -186,6 +268,7 @@
                       variant="outlined"
                       density="compact"
                       :min="0"
+                      class="score-input"
                     ></v-text-field>
                   </v-col>
                   <v-col>
@@ -196,6 +279,7 @@
                       variant="outlined"
                       density="compact"
                       :min="0"
+                      class="score-input"
                     ></v-text-field>
                   </v-col>
                   <v-col cols="auto">
@@ -205,13 +289,77 @@
                 <v-btn prepend-icon="mdi-plus" size="small" @click="addScore">Add Set</v-btn>
               </v-card-text>
             </v-card>
+            
+            <v-alert v-if="isScheduledMatch" type="info" variant="tonal" class="mb-4">
+              This match is scheduled. You can add scores later when the match is played.
+            </v-alert>
 
-            <v-textarea
-              v-model="formData.notes"
-              label="Match Notes"
-              variant="outlined"
-              rows="3"
-            ></v-textarea>
+            <v-card variant="outlined" class="mb-4">
+              <v-card-title class="text-subtitle-1">Match Notes & Tactics</v-card-title>
+              <v-card-text>
+                <v-textarea
+                  v-model="formData.notes"
+                  label="General Notes"
+                  variant="outlined"
+                  rows="3"
+                  placeholder="Overall match notes..."
+                  persistent-placeholder
+                  no-resize
+                ></v-textarea>
+                
+                <v-textarea
+                  v-model="formData.tacticsUsed"
+                  label="Tactics Used"
+                  variant="outlined"
+                  rows="2"
+                  placeholder="What tactics worked well?"
+                  persistent-placeholder
+                  no-resize
+                  class="general-notes-textarea"
+                ></v-textarea>
+                
+                <v-textarea
+                  v-model="formData.tacticsToImprove"
+                  label="Areas to Improve"
+                  variant="outlined"
+                  rows="2"
+                  placeholder="What didn't work? What needs improvement?"
+                  persistent-placeholder
+                  no-resize
+                  class="general-notes-textarea"
+                ></v-textarea>
+                
+                <v-textarea
+                  v-model="formData.opponentWeaknesses"
+                  label="Opponent Weaknesses Observed"
+                  variant="outlined"
+                  rows="2"
+                  placeholder="What weaknesses did you notice in your opponent?"
+                  persistent-placeholder
+                  no-resize
+                  class="general-notes-textarea"
+                ></v-textarea>
+              </v-card-text>
+            </v-card>
+
+            <v-card v-if="formData.player1Id && formData.player2Id" variant="outlined" class="mb-4">
+              <v-card-title class="text-subtitle-1">
+                <v-icon class="mr-2">mdi-chart-line</v-icon>
+                Win Probability Prediction
+              </v-card-title>
+              <v-card-text>
+                <div class="text-h5 mb-2">{{ getWinProbability() }}%</div>
+                <v-progress-linear
+                  :model-value="getWinProbability()"
+                  :color="getProbabilityColor()"
+                  height="25"
+                  rounded
+                ></v-progress-linear>
+                <div class="text-caption mt-2 text-medium-emphasis">
+                  Based on historical head-to-head record and recent form
+                </div>
+              </v-card-text>
+            </v-card>
 
             <v-card variant="outlined" class="mb-4">
               <v-card-title class="text-subtitle-2">YouTube Video</v-card-title>
@@ -367,6 +515,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useMatchesStore } from '../stores/matches'
 import { useOpponentsStore } from '../stores/opponents'
 import { useTournamentsStore } from '../stores/tournaments'
@@ -374,6 +523,7 @@ import { useTeamsStore } from '../stores/teams'
 import { formatDate } from '../utils/date'
 import { getYouTubeEmbedUrl } from '../utils/storage'
 
+const route = useRoute()
 const matchesStore = useMatchesStore()
 const opponentsStore = useOpponentsStore()
 const tournamentsStore = useTournamentsStore()
@@ -393,6 +543,7 @@ const filterTeam = ref(null)
 const filterRound = ref(null)
 const matchForm = ref(null)
 const dateLocked = ref(false)
+const isScheduledMatch = ref(false)
 
 const formData = ref({
   player1Id: '',
@@ -408,6 +559,9 @@ const formData = ref({
     { set: 3, player1Score: null, player2Score: null }
   ],
   notes: '',
+  tacticsUsed: '',
+  tacticsToImprove: '',
+  opponentWeaknesses: '',
   photos: [],
   videoUrls: [],
   serveStats: { successRate: 0, returnPoints: 0 }
@@ -438,6 +592,22 @@ onMounted(async () => {
     tournamentsStore.fetchTournaments(),
     teamsStore.fetchTeams()
   ])
+  
+  // Handle query parameters for scheduling matches
+  if (route.query.tournament) {
+    formData.value.tournamentId = route.query.tournament
+    if (route.query.scheduled === 'true') {
+      setTimeout(() => openMatchDialog(), 100)
+    }
+  }
+  
+  // Handle edit query parameter
+  if (route.query.edit) {
+    const match = matchesStore.matches.find(m => m.id === route.query.edit)
+    if (match) {
+      setTimeout(() => openMatchDialog(match), 100)
+    }
+  }
 })
 
 watch(() => formData.value.tournamentId, async (newTournamentId) => {
@@ -490,27 +660,140 @@ const getPlayerTeamFromClub = (playerId, tournamentId) => {
   return team ? team.id : null
 }
 
+const validatePlayerTeam = (playerId, teamId, playerLabel) => {
+  if (!playerId || !teamId || !isLeagueMatch.value || !formData.value.tournamentId) {
+    return true // No validation needed if player or team not selected
+  }
+  
+  const playerTeamId = getPlayerTeamFromClub(playerId, formData.value.tournamentId)
+  if (playerTeamId !== teamId) {
+    const player = opponentsStore.opponents.find(p => p.id === playerId)
+    const team = teamsStore.teams.find(t => t.id === teamId)
+    return `${playerLabel} does not belong to ${team?.name || 'selected team'}. Please select a player from the correct team.`
+  }
+  
+  return true
+}
+
+const getPlayer1Hint = () => {
+  if (isLeagueMatch.value && formData.value.player1TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player1TeamId)
+    return team ? `Only players from ${team.name} are shown` : ''
+  }
+  return ''
+}
+
+const getPlayer2Hint = () => {
+  if (isLeagueMatch.value && formData.value.player2TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player2TeamId)
+    return team ? `Only players from ${team.name} are shown` : ''
+  }
+  return ''
+}
+
 const onPlayer1Selected = () => {
   if (!isLeagueMatch.value || !formData.value.tournamentId || !formData.value.player1Id) {
-    formData.value.player1TeamId = ''
+    if (!isScheduledMatch.value) {
+      formData.value.player1TeamId = ''
+    }
     return
   }
 
-  const teamId = getPlayerTeamFromClub(formData.value.player1Id, formData.value.tournamentId)
-  formData.value.player1TeamId = teamId || ''
+  // Validate player belongs to selected team
+  if (formData.value.player1TeamId) {
+    const playerTeamId = getPlayerTeamFromClub(formData.value.player1Id, formData.value.tournamentId)
+    if (playerTeamId !== formData.value.player1TeamId) {
+      // Clear player if it doesn't match the team
+      formData.value.player1Id = ''
+      return
+    }
+  } else {
+    // Auto-fill team if not set
+    const teamId = getPlayerTeamFromClub(formData.value.player1Id, formData.value.tournamentId)
+    formData.value.player1TeamId = teamId || ''
+  }
 }
 
 const onPlayer2Selected = () => {
   if (!isLeagueMatch.value || !formData.value.tournamentId || !formData.value.player2Id) {
-    formData.value.player2TeamId = ''
+    if (!isScheduledMatch.value) {
+      formData.value.player2TeamId = ''
+    }
     return
   }
 
-  const teamId = getPlayerTeamFromClub(formData.value.player2Id, formData.value.tournamentId)
-  formData.value.player2TeamId = teamId || ''
+  // Validate player belongs to selected team
+  if (formData.value.player2TeamId) {
+    const playerTeamId = getPlayerTeamFromClub(formData.value.player2Id, formData.value.tournamentId)
+    if (playerTeamId !== formData.value.player2TeamId) {
+      // Clear player if it doesn't match the team
+      formData.value.player2Id = ''
+      return
+    }
+  } else {
+    // Auto-fill team if not set
+    const teamId = getPlayerTeamFromClub(formData.value.player2Id, formData.value.tournamentId)
+    formData.value.player2TeamId = teamId || ''
+  }
+}
+
+const onTeam1Selected = () => {
+  // When team is selected, clear player1 if it doesn't belong to this team
+  if (formData.value.player1Id && formData.value.player1TeamId) {
+    const playerTeamId = getPlayerTeamFromClub(formData.value.player1Id, formData.value.tournamentId)
+    if (playerTeamId !== formData.value.player1TeamId) {
+      formData.value.player1Id = ''
+    }
+  }
+}
+
+const onTeam2Selected = () => {
+  // When team is selected, clear player2 if it doesn't belong to this team
+  if (formData.value.player2Id && formData.value.player2TeamId) {
+    const playerTeamId = getPlayerTeamFromClub(formData.value.player2Id, formData.value.tournamentId)
+    if (playerTeamId !== formData.value.player2TeamId) {
+      formData.value.player2Id = ''
+    }
+  }
 }
 
 const opponentsList = computed(() => opponentsStore.opponents)
+
+const filteredPlayer1List = computed(() => {
+  if (!isLeagueMatch.value || !formData.value.tournamentId) {
+    return opponentsList.value
+  }
+  
+  // If team is selected, only show players from that team
+  if (formData.value.player1TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player1TeamId)
+    if (team) {
+      return opponentsList.value.filter(player => {
+        return player.club === team.name
+      })
+    }
+  }
+  
+  return opponentsList.value
+})
+
+const filteredPlayer2List = computed(() => {
+  if (!isLeagueMatch.value || !formData.value.tournamentId) {
+    return opponentsList.value
+  }
+  
+  // If team is selected, only show players from that team
+  if (formData.value.player2TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player2TeamId)
+    if (team) {
+      return opponentsList.value.filter(player => {
+        return player.club === team.name
+      })
+    }
+  }
+  
+  return opponentsList.value
+})
 
 const tournamentsList = computed(() => {
   return tournamentsStore.tournaments.map(t => ({
@@ -531,6 +814,16 @@ const teamsList = computed(() => {
     id: t.id,
     name: t.name
   }))
+})
+
+const tournamentTeamsList = computed(() => {
+  if (!formData.value.tournamentId) return []
+  return teamsStore.teams
+    .filter(t => t.tournamentId === formData.value.tournamentId)
+    .map(t => ({
+      id: t.id,
+      name: t.name
+    }))
 })
 
 const isLeagueMatch = computed(() => {
@@ -600,7 +893,10 @@ const openMatchDialog = (match = null) => {
     formData.value = {
       ...match,
       date: match.date.toISOString().split('T')[0],
-      youtubeUrl: match.videoUrls && match.videoUrls.length > 0 ? match.videoUrls[0] : ''
+      youtubeUrl: match.videoUrls && match.videoUrls.length > 0 ? match.videoUrls[0] : '',
+      tacticsUsed: match.tacticsUsed || '',
+      tacticsToImprove: match.tacticsToImprove || '',
+      opponentWeaknesses: match.opponentWeaknesses || ''
     }
     setTimeout(() => {
       checkRoundDate()
@@ -609,6 +905,11 @@ const openMatchDialog = (match = null) => {
     }, 100)
   } else {
     editingMatch.value = null
+    const today = new Date()
+    const matchDate = new Date(today)
+    matchDate.setDate(today.getDate() + 7)
+    isScheduledMatch.value = true
+    
     // Find default tournament
     const defaultTournament = tournamentsStore.tournaments.find(t => t.isDefault)
     formData.value = {
@@ -618,13 +919,12 @@ const openMatchDialog = (match = null) => {
       player2Id: '',
       player1TeamId: '',
       player2TeamId: '',
-      date: new Date().toISOString().split('T')[0],
-      scores: [
-        { set: 1, player1Score: null, player2Score: null },
-        { set: 2, player1Score: null, player2Score: null },
-        { set: 3, player1Score: null, player2Score: null }
-      ],
+      date: matchDate.toISOString().split('T')[0],
+      scores: [],
       notes: '',
+      tacticsUsed: '',
+      tacticsToImprove: '',
+      opponentWeaknesses: '',
       photos: [],
       videoUrls: [],
       youtubeUrl: '',
@@ -632,6 +932,20 @@ const openMatchDialog = (match = null) => {
     }
   }
   matchDialog.value = true
+}
+
+const onScheduledMatchChange = (value) => {
+  if (value) {
+    formData.value.scores = []
+  } else {
+    if (formData.value.scores.length === 0) {
+      formData.value.scores = [
+        { set: 1, player1Score: null, player2Score: null },
+        { set: 2, player1Score: null, player2Score: null },
+        { set: 3, player1Score: null, player2Score: null }
+      ]
+    }
+  }
 }
 
 const closeMatchDialog = () => {
@@ -658,6 +972,35 @@ const saveMatch = async () => {
   const { valid } = await matchForm.value.validate()
   if (!valid) return
 
+  // For scheduled matches, require teams for league matches
+  if (isScheduledMatch.value && isLeagueMatch.value) {
+    if (!formData.value.player1TeamId || !formData.value.player2TeamId) {
+      alert('Please select both teams for scheduled league matches')
+      return
+    }
+  }
+
+  // For completed matches, require players
+  if (!isScheduledMatch.value) {
+    if (!formData.value.player1Id || !formData.value.player2Id) {
+      alert('Please select both players for completed matches')
+      return
+    }
+  }
+
+  // Determine match status
+  const hasScores = formData.value.scores && formData.value.scores.length > 0 && 
+    formData.value.scores.some(s => (s.player1Score || s.myScore) && (s.player2Score || s.oppScore))
+  const matchDate = new Date(formData.value.date)
+  const isFuture = matchDate > new Date()
+  
+  let status = 'completed'
+  if (isScheduledMatch.value || (!hasScores && isFuture)) {
+    status = 'scheduled'
+  } else if (hasScores) {
+    status = 'completed'
+  }
+
   // Convert youtubeUrl to videoUrls array
   const videoUrls = []
   if (formData.value.youtubeUrl && formData.value.youtubeUrl.trim()) {
@@ -678,7 +1021,8 @@ const saveMatch = async () => {
   const matchData = {
     ...formData.value,
     date: new Date(formData.value.date),
-    videoUrls: videoUrls
+    videoUrls: videoUrls,
+    status: status
   }
   
   // Remove youtubeUrl from the data we save (it's just for the form)
@@ -792,6 +1136,102 @@ const getSetsWon = (match) => {
   return `${player1Sets}-${player2Sets}`
 }
 
+const getWinProbability = () => {
+  if (!formData.value.player1Id || !formData.value.player2Id) return 50
+  
+  const player1Id = formData.value.player1Id
+  const player2Id = formData.value.player2Id
+  
+  const player1Matches = matchesStore.matches.filter(m => 
+    m.player1Id === player1Id || m.player2Id === player1Id
+  )
+  const player2Matches = matchesStore.matches.filter(m => 
+    m.player1Id === player2Id || m.player2Id === player2Id
+  )
+  
+  if (player1Matches.length === 0 && player2Matches.length === 0) return 50
+  
+  let player1WinRate = 0
+  let player2WinRate = 0
+  
+  if (player1Matches.length > 0) {
+    const player1Wins = player1Matches.filter(m => {
+      const isP1 = m.player1Id === player1Id
+      let p1Sets = 0
+      let p2Sets = 0
+      m.scores.forEach(s => {
+        const p1 = s.player1Score || s.myScore || 0
+        const p2 = s.player2Score || s.oppScore || 0
+        if (p1 > p2) p1Sets++
+        else if (p2 > p1) p2Sets++
+      })
+      return isP1 ? p1Sets > p2Sets : p2Sets > p1Sets
+    }).length
+    player1WinRate = (player1Wins / player1Matches.length) * 100
+  }
+  
+  if (player2Matches.length > 0) {
+    const player2Wins = player2Matches.filter(m => {
+      const isP1 = m.player1Id === player2Id
+      let p1Sets = 0
+      let p2Sets = 0
+      m.scores.forEach(s => {
+        const p1 = s.player1Score || s.myScore || 0
+        const p2 = s.player2Score || s.oppScore || 0
+        if (p1 > p2) p1Sets++
+        else if (p2 > p1) p2Sets++
+      })
+      return isP1 ? p1Sets > p2Sets : p2Sets > p1Sets
+    }).length
+    player2WinRate = (player2Wins / player2Matches.length) * 100
+  }
+  
+  const h2hMatches = matchesStore.matches.filter(m => 
+    (m.player1Id === player1Id && m.player2Id === player2Id) ||
+    (m.player1Id === player2Id && m.player2Id === player1Id)
+  )
+  
+  let h2hWinRate = 50
+  if (h2hMatches.length > 0) {
+    const h2hWins = h2hMatches.filter(m => {
+      const isP1 = m.player1Id === player1Id
+      let p1Sets = 0
+      let p2Sets = 0
+      m.scores.forEach(s => {
+        const p1 = s.player1Score || s.myScore || 0
+        const p2 = s.player2Score || s.oppScore || 0
+        if (p1 > p2) p1Sets++
+        else if (p2 > p1) p2Sets++
+      })
+      return isP1 ? p1Sets > p2Sets : p2Sets > p1Sets
+    }).length
+    h2hWinRate = (h2hWins / h2hMatches.length) * 100
+  }
+  
+  const overallWinRate = (player1WinRate + (100 - player2WinRate)) / 2
+  const weightedProbability = h2hMatches.length >= 3 
+    ? (h2hWinRate * 0.6) + (overallWinRate * 0.4)
+    : overallWinRate
+  
+  return Math.max(5, Math.min(95, Math.round(weightedProbability)))
+}
+
+const getProbabilityColor = () => {
+  const prob = getWinProbability()
+  if (prob >= 70) return 'success'
+  if (prob >= 50) return 'info'
+  if (prob >= 30) return 'warning'
+  return 'error'
+}
+
+const isScheduled = (match) => {
+  if (match.status === 'scheduled') return true
+  const hasScores = match.scores && match.scores.length > 0 && 
+    match.scores.some(s => (s.player1Score || s.myScore) && (s.player2Score || s.oppScore))
+  const matchDate = match.date instanceof Date ? match.date : match.date.toDate()
+  return !hasScores && matchDate > new Date()
+}
+
 const getSetBreakdown = (match) => {
   return match.scores.map(s => `${s.player1Score || s.myScore || 0}-${s.player2Score || s.oppScore || 0}`).join(', ')
 }
@@ -824,6 +1264,72 @@ const getTeamName = (teamId) => {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+.border-scheduled {
+  border-left: 4px solid #2196F3 !important;
+}
+
+/* Remove floating label animation for General Notes to prevent it going above other text */
+.general-notes-textarea .v-label {
+  position: static !important;
+  transform: none !important;
+  transition: none !important;
+  top: auto !important;
+  left: auto !important;
+  margin-bottom: 8px !important;
+}
+
+.general-notes-textarea .v-field__input {
+  padding-top: 0 !important;
+}
+
+/* Remove spinner arrows from number inputs in score fields */
+.score-input input[type="number"]::-webkit-inner-spin-button,
+.score-input input[type="number"]::-webkit-outer-spin-button,
+.score-input .v-field__input input[type="number"]::-webkit-inner-spin-button,
+.score-input .v-field__input input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button,
+.v-text-field input[type="number"]::-webkit-inner-spin-button,
+.v-text-field input[type="number"]::-webkit-outer-spin-button,
+.v-field input[type="number"]::-webkit-inner-spin-button,
+.v-field input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.score-input input[type="number"],
+.score-input .v-field__input input[type="number"],
+input[type="number"],
+.v-text-field input[type="number"],
+.v-field input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
+/* Additional fix for all number inputs in all states */
+.score-input input[type="number"]:hover,
+.score-input input[type="number"]:focus,
+.score-input input[type="number"]:active,
+.score-input .v-field__input input[type="number"]:hover,
+.score-input .v-field__input input[type="number"]:focus,
+.score-input .v-field__input input[type="number"]:active,
+input[type="number"]:hover,
+input[type="number"]:focus,
+input[type="number"]:active,
+.v-text-field input[type="number"]:hover,
+.v-text-field input[type="number"]:focus,
+.v-text-field input[type="number"]:active,
+.v-field input[type="number"]:hover,
+.v-field input[type="number"]:focus,
+.v-field input[type="number"]:active {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }
 </style>
 

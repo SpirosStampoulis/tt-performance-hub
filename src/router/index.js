@@ -58,6 +58,24 @@ const routes = [
     component: () => import('../views/SkillsView.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/calendar',
+    name: 'Calendar',
+    component: () => import('../views/CalendarView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/goals',
+    name: 'Goals',
+    component: () => import('../views/GoalsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/practice',
+    name: 'Practice',
+    component: () => import('../views/PracticeView.vue'),
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({

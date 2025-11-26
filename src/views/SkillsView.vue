@@ -31,6 +31,30 @@
           </v-card-title>
           <v-card-subtitle>{{ skill.category }}</v-card-subtitle>
           <v-card-text>
+            <div v-if="getCurrentRating(skill.id)" class="mb-3">
+              <div class="text-caption text-medium-emphasis mb-1">Current Rating</div>
+              <div class="d-flex align-center">
+                <v-rating
+                  :model-value="getCurrentRating(skill.id)"
+                  readonly
+                  size="small"
+                  density="compact"
+                  class="mr-2"
+                ></v-rating>
+                <span class="text-body-2">{{ getCurrentRating(skill.id) }}/5</span>
+                <v-chip
+                  v-if="getRatingTrend(skill.id)"
+                  size="x-small"
+                  :color="getRatingTrend(skill.id).isImproving ? 'success' : 'error'"
+                  class="ml-2"
+                >
+                  <v-icon size="x-small" class="mr-1">
+                    {{ getRatingTrend(skill.id).isImproving ? 'mdi-trending-up' : 'mdi-trending-down' }}
+                  </v-icon>
+                  {{ getRatingTrend(skill.id).change > 0 ? '+' : '' }}{{ getRatingTrend(skill.id).change.toFixed(1) }}
+                </v-chip>
+              </div>
+            </div>
             <div v-if="skill.notes" class="mb-2" style="max-height: 100px; overflow: hidden">
               {{ skill.notes.substring(0, 150) }}{{ skill.notes.length > 150 ? '...' : '' }}
             </div>
@@ -42,6 +66,7 @@
             </div>
           </v-card-text>
           <v-card-actions>
+            <v-btn icon="mdi-star" size="small" @click="openRatingDialog(skill)" color="primary"></v-btn>
             <v-btn icon="mdi-pencil" size="small" @click="openSkillDialog(skill)"></v-btn>
             <v-btn icon="mdi-delete" size="small" color="error" @click="confirmDelete(skill)"></v-btn>
             <v-spacer></v-spacer>
@@ -132,6 +157,46 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="ratingDialog" max-width="500">
+      <v-card v-if="ratingSkill">
+        <v-card-title>Rate Skill: {{ ratingSkill.name }}</v-card-title>
+        <v-card-text>
+          <v-form ref="ratingForm">
+            <v-text-field
+              v-model="ratingFormData.date"
+              label="Date"
+              type="date"
+              variant="outlined"
+              :rules="[v => !!v || 'Date is required']"
+            ></v-text-field>
+
+            <div class="mb-4">
+              <div class="text-subtitle-1 mb-2">Your Rating (1-5)</div>
+              <v-rating
+                v-model="ratingFormData.rating"
+                :rules="[v => v > 0 || 'Please select a rating']"
+                size="large"
+                color="primary"
+              ></v-rating>
+            </div>
+
+            <v-textarea
+              v-model="ratingFormData.notes"
+              label="Notes (Optional)"
+              variant="outlined"
+              rows="3"
+              placeholder="What's your assessment? What needs work?"
+            ></v-textarea>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="closeRatingDialog">Cancel</v-btn>
+          <v-btn color="primary" @click="saveRating">Save Rating</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="detailDialog" max-width="900">
       <v-card v-if="viewingSkill">
         <v-card-title>
@@ -201,18 +266,23 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useSkillsStore } from '../stores/skills'
+import { useSkillRatingsStore } from '../stores/skillRatings'
 import { getYouTubeEmbedUrl } from '../utils/storage'
 
 const skillsStore = useSkillsStore()
+const skillRatingsStore = useSkillRatingsStore()
 
 const selectedCategory = ref('all')
 const skillDialog = ref(false)
 const detailDialog = ref(false)
 const deleteDialog = ref(false)
+const ratingDialog = ref(false)
 const editingSkill = ref(null)
 const viewingSkill = ref(null)
 const skillToDelete = ref(null)
+const ratingSkill = ref(null)
 const skillForm = ref(null)
+const ratingForm = ref(null)
 
 const difficultyLabels = {
   0: 'Beginner',
@@ -231,8 +301,17 @@ const formData = ref({
   relatedSkills: []
 })
 
+const ratingFormData = ref({
+  date: new Date().toISOString().split('T')[0],
+  rating: 0,
+  notes: ''
+})
+
 onMounted(async () => {
-  await skillsStore.fetchSkills()
+  await Promise.all([
+    skillsStore.fetchSkills(),
+    skillRatingsStore.fetchRatings()
+  ])
 })
 
 const displayedSkills = computed(() => {
@@ -338,6 +417,46 @@ const getDifficultyColor = (difficulty) => {
     Professional: 'purple'
   }
   return colors[difficulty] || 'grey'
+}
+
+const openRatingDialog = (skill) => {
+  ratingSkill.value = skill
+  ratingFormData.value = {
+    date: new Date().toISOString().split('T')[0],
+    rating: skillRatingsStore.getCurrentRating(skill.id) || 0,
+    notes: ''
+  }
+  ratingDialog.value = true
+}
+
+const closeRatingDialog = () => {
+  ratingDialog.value = false
+  ratingSkill.value = null
+}
+
+const saveRating = async () => {
+  const { valid } = await ratingForm.value.validate()
+  if (!valid) return
+
+  try {
+    await skillRatingsStore.addRating({
+      skillId: ratingSkill.value.id,
+      rating: ratingFormData.value.rating,
+      date: new Date(ratingFormData.value.date),
+      notes: ratingFormData.value.notes || ''
+    })
+    closeRatingDialog()
+  } catch (error) {
+    console.error('Error saving rating:', error)
+  }
+}
+
+const getCurrentRating = (skillId) => {
+  return skillRatingsStore.getCurrentRating(skillId)
+}
+
+const getRatingTrend = (skillId) => {
+  return skillRatingsStore.getRatingTrend(skillId)
 }
 
 const getDifficultyLabel = (value) => {

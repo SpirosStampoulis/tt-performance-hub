@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-row>
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="3">
         <v-card>
           <v-card-text>
             <div class="text-h6 mb-2">Total Matches</div>
@@ -10,7 +10,7 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="3">
         <v-card>
           <v-card-text>
             <div class="text-h6 mb-2">Win Rate</div>
@@ -20,11 +20,59 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="3">
+        <v-card>
+          <v-card-text>
+            <div class="text-h6 mb-2">Sets Won %</div>
+            <div class="text-h3">{{ matchesStore.advancedStats.setsWonPercentage }}%</div>
+            <div class="text-caption">{{ matchesStore.advancedStats.totalSetsWon }}W - {{ matchesStore.advancedStats.totalSetsLost }}L</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="3">
         <v-card>
           <v-card-text>
             <div class="text-h6 mb-2">Players Tracked</div>
             <div class="text-h3">{{ opponentsStore.opponents.length }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <v-row v-if="matchesStore.advancedStats.averageServeSuccess > 0 || matchesStore.advancedStats.averageReturnPoints > 0">
+      <v-col cols="12" md="4">
+        <v-card>
+          <v-card-text>
+            <div class="text-h6 mb-2">
+              <v-icon class="mr-2">mdi-tennis</v-icon>
+              Avg Serve Success
+            </div>
+            <div class="text-h3">{{ matchesStore.advancedStats.averageServeSuccess }}%</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="4">
+        <v-card>
+          <v-card-text>
+            <div class="text-h6 mb-2">
+              <v-icon class="mr-2">mdi-swap-horizontal</v-icon>
+              Avg Return Points
+            </div>
+            <div class="text-h3">{{ matchesStore.advancedStats.averageReturnPoints }}%</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="4" v-if="matchesStore.advancedStats.averageMatchDuration > 0">
+        <v-card>
+          <v-card-text>
+            <div class="text-h6 mb-2">
+              <v-icon class="mr-2">mdi-clock-outline</v-icon>
+              Avg Match Duration
+            </div>
+            <div class="text-h3">{{ matchesStore.advancedStats.averageMatchDuration }} min</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -108,6 +156,24 @@
       </v-col>
     </v-row>
 
+    <v-row v-if="matchesStore.performanceByMonth.length > 0">
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-text>
+            <PerformanceTrendChart :monthlyData="matchesStore.performanceByMonth" />
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="6" v-if="matchesStore.setsTrend.length > 0">
+        <v-card>
+          <v-card-text>
+            <SetsTrendChart :setsTrend="matchesStore.setsTrend" />
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <v-row>
       <v-col cols="12">
         <v-card>
@@ -178,6 +244,8 @@ import { useTournamentsStore } from '../stores/tournaments'
 import { formatDateShort } from '../utils/date'
 import WinRateChart from '../components/dashboard/WinRateChart.vue'
 import DivisionChart from '../components/dashboard/DivisionChart.vue'
+import PerformanceTrendChart from '../components/dashboard/PerformanceTrendChart.vue'
+import SetsTrendChart from '../components/dashboard/SetsTrendChart.vue'
 
 const router = useRouter()
 const matchesStore = useMatchesStore()

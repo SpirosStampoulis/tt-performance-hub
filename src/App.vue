@@ -11,10 +11,13 @@
         <v-list density="compact" nav>
           <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/"></v-list-item>
           <v-list-item prepend-icon="mdi-trophy" title="Matches" value="matches" to="/matches"></v-list-item>
+          <v-list-item prepend-icon="mdi-calendar" title="Calendar" value="calendar" to="/calendar"></v-list-item>
           <v-list-item prepend-icon="mdi-tournament" title="Tournaments" value="tournaments" to="/tournaments"></v-list-item>
           <v-list-item prepend-icon="mdi-shield-account" title="League Management" value="leagues" to="/leagues"></v-list-item>
           <v-list-item prepend-icon="mdi-account-group" title="Players" value="opponents" to="/opponents"></v-list-item>
           <v-list-item prepend-icon="mdi-school" title="Skills" value="skills" to="/skills"></v-list-item>
+          <v-list-item prepend-icon="mdi-target" title="Goals" value="goals" to="/goals"></v-list-item>
+          <v-list-item prepend-icon="mdi-dumbbell" title="Practice" value="practice" to="/practice"></v-list-item>
         </v-list>
 
         <template v-slot:append>
@@ -60,11 +63,14 @@ const pageTitle = computed(() => {
     Dashboard: 'Dashboard',
     Matches: 'Match Tracker',
     MatchDetail: 'Match Details',
+    Calendar: 'Match Calendar',
     Tournaments: 'Tournaments',
     LeagueManagement: 'League Management',
     Opponents: 'Players',
     OpponentDetail: 'Player Profile',
     Skills: 'Skill Library',
+    Goals: 'Goals',
+    Practice: 'Practice Log',
     Login: 'Login'
   }
   return titles[route.name] || 'TT Performance Hub'

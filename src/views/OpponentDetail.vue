@@ -95,6 +95,46 @@
           </v-card-text>
         </v-card>
 
+        <v-card class="mb-4" v-if="matches.length > 0">
+          <v-card-title>Recent Form & Patterns</v-card-title>
+          <v-card-text>
+            <v-row>
+              <v-col cols="12" md="6">
+                <div class="text-subtitle-1 mb-2">Recent Form (Last 5)</div>
+                <div class="d-flex">
+                  <v-chip
+                    v-for="(result, index) in recentForm"
+                    :key="index"
+                    :color="result === 'W' ? 'success' : 'error'"
+                    size="small"
+                    class="mr-1"
+                  >
+                    {{ result }}
+                  </v-chip>
+                </div>
+                <div class="text-caption text-medium-emphasis mt-2">
+                  Current Streak: {{ currentStreak.type }} {{ currentStreak.count }}
+                </div>
+              </v-col>
+              <v-col cols="12" md="6">
+                <div class="text-subtitle-1 mb-2">Performance Insights</div>
+                <div v-if="bestPerformance" class="text-body-2 mb-1">
+                  <v-icon size="small" color="success" class="mr-1">mdi-trophy</v-icon>
+                  Best: {{ bestPerformance.score }} ({{ formatDate(bestPerformance.date) }})
+                </div>
+                <div v-if="worstPerformance" class="text-body-2">
+                  <v-icon size="small" color="error" class="mr-1">mdi-alert</v-icon>
+                  Worst: {{ worstPerformance.score }} ({{ formatDate(worstPerformance.date) }})
+                </div>
+                <div v-if="winProbability > 0" class="text-body-2 mt-2">
+                  <v-icon size="small" color="primary" class="mr-1">mdi-chart-line</v-icon>
+                  Win Probability: {{ winProbability }}%
+                </div>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+
         <v-card class="mb-4">
           <v-card-title>
             Match History
@@ -224,6 +264,137 @@ const averageScoreDiff = computed(() => {
   }, 0)
   
   return (totalDiff / matches.value.length).toFixed(1)
+})
+
+const recentForm = computed(() => {
+  const sortedMatches = [...matches.value]
+    .filter(m => m.date)
+    .sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date : a.date.toDate()
+      const dateB = b.date instanceof Date ? b.date : b.date.toDate()
+      return dateB - dateA
+    })
+    .slice(0, 5)
+  
+  return sortedMatches.map(m => getMatchResult(m) === 'Win' ? 'W' : 'L')
+})
+
+const currentStreak = computed(() => {
+  if (matches.value.length === 0) return { type: 'None', count: 0 }
+  
+  const sortedMatches = [...matches.value]
+    .filter(m => m.date)
+    .sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date : a.date.toDate()
+      const dateB = b.date instanceof Date ? b.date : b.date.toDate()
+      return dateB - dateA
+    })
+  
+  if (sortedMatches.length === 0) return { type: 'None', count: 0 }
+  
+  const firstResult = getMatchResult(sortedMatches[0])
+  let count = 1
+  
+  for (let i = 1; i < sortedMatches.length; i++) {
+    if (getMatchResult(sortedMatches[i]) === firstResult) {
+      count++
+    } else {
+      break
+    }
+  }
+  
+  return {
+    type: firstResult === 'Win' ? 'Winning' : 'Losing',
+    count
+  }
+})
+
+const bestPerformance = computed(() => {
+  if (matches.value.length === 0) return null
+  
+  const playerId = route.params.id
+  let best = null
+  let bestDiff = -Infinity
+  
+  matches.value.forEach(match => {
+    const isPlayer1 = match.player1Id === playerId || match.opponentId === playerId
+    let player1Sets = 0
+    let player2Sets = 0
+    
+    match.scores.forEach(score => {
+      const p1Score = score.player1Score || score.myScore || 0
+      const p2Score = score.player2Score || score.oppScore || 0
+      if (p1Score > p2Score) player1Sets++
+      else if (p2Score > p1Score) player2Sets++
+    })
+    
+    const diff = isPlayer1 ? (player1Sets - player2Sets) : (player2Sets - player1Sets)
+    
+    if (diff > bestDiff && getMatchResult(match) === 'Win') {
+      bestDiff = diff
+      best = {
+        score: isPlayer1 ? `${player1Sets}-${player2Sets}` : `${player2Sets}-${player1Sets}`,
+        date: match.date instanceof Date ? match.date : match.date.toDate()
+      }
+    }
+  })
+  
+  return best
+})
+
+const worstPerformance = computed(() => {
+  if (matches.value.length === 0) return null
+  
+  const playerId = route.params.id
+  let worst = null
+  let worstDiff = Infinity
+  
+  matches.value.forEach(match => {
+    const isPlayer1 = match.player1Id === playerId || match.opponentId === playerId
+    let player1Sets = 0
+    let player2Sets = 0
+    
+    match.scores.forEach(score => {
+      const p1Score = score.player1Score || score.myScore || 0
+      const p2Score = score.player2Score || score.oppScore || 0
+      if (p1Score > p2Score) player1Sets++
+      else if (p2Score > p1Score) player2Sets++
+    })
+    
+    const diff = isPlayer1 ? (player1Sets - player2Sets) : (player2Sets - player1Sets)
+    
+    if (diff < worstDiff && getMatchResult(match) === 'Loss') {
+      worstDiff = diff
+      worst = {
+        score: isPlayer1 ? `${player1Sets}-${player2Sets}` : `${player2Sets}-${player1Sets}`,
+        date: match.date instanceof Date ? match.date : match.date.toDate()
+      }
+    }
+  })
+  
+  return worst
+})
+
+const winProbability = computed(() => {
+  if (matches.value.length < 3) return 0
+  
+  const recentMatches = [...matches.value]
+    .filter(m => m.date)
+    .sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date : a.date.toDate()
+      const dateB = b.date instanceof Date ? b.date : b.date.toDate()
+      return dateB - dateA
+    })
+    .slice(0, 10)
+  
+  const recentWins = recentMatches.filter(m => getMatchResult(m) === 'Win').length
+  const recentWinRate = (recentWins / recentMatches.length) * 100
+  
+  const overallWinRate = parseFloat(headToHead.value.winRate)
+  
+  const weightedProbability = (recentWinRate * 0.6) + (overallWinRate * 0.4)
+  
+  return Math.round(weightedProbability)
 })
 
 const getInitials = (name) => {

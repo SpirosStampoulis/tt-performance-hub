@@ -13,14 +13,84 @@
         ></v-select>
       </v-col>
       <v-col cols="12" md="6" v-if="selectedTournament">
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTeamDialog = true">
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTeamDialog = true" class="mr-2">
           Add Team
+        </v-btn>
+        <v-btn color="info" prepend-icon="mdi-calendar-plus" @click="openScheduleMatchDialog">
+          Schedule Match
         </v-btn>
       </v-col>
     </v-row>
 
     <v-row v-if="selectedTournament">
       <v-col cols="12" md="8">
+        <v-card class="mb-4" v-if="upcomingMatches.length > 0">
+          <v-card-title>
+            <v-icon class="mr-2">mdi-clock-outline</v-icon>
+            Upcoming Matches
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text>
+            <v-card
+              v-for="round in upcomingMatchesByRound"
+              :key="round.round"
+              class="mb-3"
+              variant="outlined"
+            >
+              <v-card-title class="text-subtitle-1">
+                <v-icon size="small" class="mr-2">mdi-calendar-range</v-icon>
+                Round {{ round.round }}
+              </v-card-title>
+              <v-divider></v-divider>
+              <v-card-text>
+                <v-list density="compact">
+                  <v-list-item
+                    v-for="match in round.matches"
+                    :key="match.id"
+                    @click="openMatchForScores(match)"
+                    class="mb-1"
+                    style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px; cursor: pointer;"
+                  >
+                    <v-list-item-title class="text-body-1">
+                      <span v-if="match.player1Id && match.player2Id">
+                        {{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}
+                      </span>
+                      <span v-else-if="match.player1TeamId && match.player2TeamId">
+                        {{ getTeamName(match.player1TeamId) }} vs {{ getTeamName(match.player2TeamId) }}
+                      </span>
+                      <span v-else>
+                        Match TBD
+                      </span>
+                    </v-list-item-title>
+                    <v-list-item-subtitle>
+                      <v-icon size="small" class="mr-1">mdi-calendar</v-icon>
+                      {{ formatDate(match.date) }}
+                      <span v-if="match.player1TeamId || match.player2TeamId" class="ml-2">
+                        • {{ getTeamName(match.player1TeamId) }} vs {{ getTeamName(match.player2TeamId) }}
+                      </span>
+                      <span v-if="!match.player1Id || !match.player2Id" class="ml-2 text-info">
+                        <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
+                        Players TBD
+                      </span>
+                    </v-list-item-subtitle>
+                    <template v-slot:append>
+                      <v-btn
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        prepend-icon="mdi-pencil"
+                        @click.stop="openMatchForScores(match)"
+                      >
+                        Add Scores
+                      </v-btn>
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </v-card-text>
+            </v-card>
+          </v-card-text>
+        </v-card>
+
         <v-card class="mb-4">
           <v-card-title>
             <v-icon class="mr-2">mdi-trophy</v-icon>
@@ -411,6 +481,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useTeamsStore } from '../stores/teams'
 import { useTeamMatchesStore } from '../stores/teamMatches'
@@ -419,6 +490,7 @@ import { useOpponentsStore } from '../stores/opponents'
 import { formatDate } from '../utils/date'
 import { uploadImage } from '../utils/storage'
 
+const router = useRouter()
 const tournamentsStore = useTournamentsStore()
 const teamsStore = useTeamsStore()
 const teamMatchesStore = useTeamMatchesStore()
@@ -637,6 +709,49 @@ const groupedByRound = computed(() => {
       const dateA = a.date ? new Date(a.date) : new Date(0)
       const dateB = b.date ? new Date(b.date) : new Date(0)
       return dateB - dateA
+    })
+  }))
+})
+
+const upcomingMatches = computed(() => {
+  if (!selectedTournament.value) return []
+  
+  return matchesStore.matches.filter(match => {
+    if (match.tournamentId !== selectedTournament.value) return false
+    
+    const isScheduled = match.status === 'scheduled'
+    const hasScores = match.scores && match.scores.length > 0 && 
+      match.scores.some(s => (s.player1Score || s.myScore) && (s.player2Score || s.oppScore))
+    const matchDate = match.date instanceof Date ? match.date : match.date.toDate()
+    const isFuture = matchDate > new Date()
+    
+    return isScheduled || (!hasScores && isFuture)
+  })
+})
+
+const upcomingMatchesByRound = computed(() => {
+  const grouped = {}
+  upcomingMatches.value.forEach(match => {
+    const round = match.round || 'Unknown'
+    if (!grouped[round]) {
+      grouped[round] = []
+    }
+    grouped[round].push(match)
+  })
+  
+  return Object.keys(grouped).sort((a, b) => {
+    const aNum = parseInt(a)
+    const bNum = parseInt(b)
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return aNum - bNum
+    }
+    return a.localeCompare(b)
+  }).map(round => ({
+    round,
+    matches: grouped[round].sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date : a.date.toDate()
+      const dateB = b.date instanceof Date ? b.date : b.date.toDate()
+      return dateA - dateB
     })
   }))
 })
@@ -1259,6 +1374,25 @@ const refreshTeamMatches = async () => {
 const closeCleanupDialog = () => {
   showCleanupDialog.value = false
   cleanupResults.value = null
+}
+
+const openScheduleMatchDialog = () => {
+  router.push({
+    path: '/matches',
+    query: {
+      tournament: selectedTournament.value,
+      scheduled: 'true'
+    }
+  })
+}
+
+const openMatchForScores = (match) => {
+  router.push({
+    path: '/matches',
+    query: {
+      edit: match.id
+    }
+  })
 }
 
 const cleanupDuplicates = async () => {

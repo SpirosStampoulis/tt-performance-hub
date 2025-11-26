@@ -9,7 +9,7 @@
     </v-row>
 
     <v-row>
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="3">
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
@@ -19,7 +19,7 @@
           clearable
         ></v-text-field>
       </v-col>
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="3">
         <v-select
           v-model="filterTournament"
           :items="tournamentsList"
@@ -31,13 +31,37 @@
           clearable
         ></v-select>
       </v-col>
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="3">
         <v-select
           v-model="filterOpponent"
           :items="opponentsList"
           item-title="name"
           item-value="id"
-          label="Filter by Opponent"
+          label="Filter by Player"
+          variant="outlined"
+          density="compact"
+          clearable
+        ></v-select>
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-select
+          v-model="filterTeam"
+          :items="teamsList"
+          item-title="name"
+          item-value="id"
+          label="Filter by Team"
+          variant="outlined"
+          density="compact"
+          clearable
+        ></v-select>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="12" md="3">
+        <v-select
+          v-model="filterRound"
+          :items="roundsList"
+          label="Filter by Round"
           variant="outlined"
           density="compact"
           clearable
@@ -50,11 +74,6 @@
         <v-card>
           <v-card-text>
             <v-row align="center">
-              <v-col cols="auto">
-                <v-avatar :color="getMatchResult(match) === 'Win' ? 'success' : 'error'" size="60">
-                  <v-icon size="32">{{ getMatchResult(match) === 'Win' ? 'mdi-check' : 'mdi-close' }}</v-icon>
-                </v-avatar>
-              </v-col>
               <v-col>
                 <div class="text-h6">{{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}</div>
                 <div class="text-subtitle-2 text-medium-emphasis">
@@ -107,6 +126,7 @@
               label="Round"
               variant="outlined"
               placeholder="e.g., Round 1, Round 5"
+              :rules="[v => !!v || 'Round is required for league matches']"
               @blur="checkRoundDate"
             ></v-text-field>
 
@@ -136,19 +156,6 @@
               </template>
             </v-autocomplete>
 
-            <v-select
-              v-if="isLeagueMatch && tournamentTeams.length > 0"
-              v-model="formData.player1TeamId"
-              :items="tournamentTeams"
-              item-title="name"
-              item-value="id"
-              label="Player 1 Team"
-              variant="outlined"
-              :disabled="player1TeamLocked"
-              :hint="player1TeamLocked ? 'Team locked - player previously linked to this team' : ''"
-              persistent-hint
-            ></v-select>
-
             <v-autocomplete
               v-model="formData.player2Id"
               :items="opponentsList"
@@ -163,19 +170,6 @@
                 <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true"></v-btn>
               </template>
             </v-autocomplete>
-
-            <v-select
-              v-if="isLeagueMatch && tournamentTeams.length > 0"
-              v-model="formData.player2TeamId"
-              :items="tournamentTeams"
-              item-title="name"
-              item-value="id"
-              label="Player 2 Team"
-              variant="outlined"
-              :disabled="player2TeamLocked"
-              :hint="player2TeamLocked ? 'Team locked - player previously linked to this team' : ''"
-              persistent-hint
-            ></v-select>
 
             <v-card variant="outlined" class="mb-4">
               <v-card-title class="text-subtitle-1">Scores</v-card-title>
@@ -395,10 +389,10 @@ const matchToDelete = ref(null)
 const search = ref('')
 const filterTournament = ref(null)
 const filterOpponent = ref(null)
+const filterTeam = ref(null)
+const filterRound = ref(null)
 const matchForm = ref(null)
 const dateLocked = ref(false)
-const player1TeamLocked = ref(false)
-const player2TeamLocked = ref(false)
 
 const formData = ref({
   player1Id: '',
@@ -408,7 +402,11 @@ const formData = ref({
   player1TeamId: '',
   player2TeamId: '',
   date: new Date().toISOString().split('T')[0],
-  scores: [{ set: 1, player1Score: null, player2Score: null }],
+  scores: [
+    { set: 1, player1Score: null, player2Score: null },
+    { set: 2, player1Score: null, player2Score: null },
+    { set: 3, player1Score: null, player2Score: null }
+  ],
   notes: '',
   photos: [],
   videoUrls: [],
@@ -450,8 +448,8 @@ watch(() => formData.value.tournamentId, async (newTournamentId) => {
   formData.value.player2TeamId = ''
   formData.value.round = ''
   dateLocked.value = false
-  player1TeamLocked.value = false
-  player2TeamLocked.value = false
+  if (formData.value.player1Id) onPlayer1Selected()
+  if (formData.value.player2Id) onPlayer2Selected()
 })
 
 watch(() => formData.value.round, () => {
@@ -478,53 +476,38 @@ const checkRoundDate = () => {
   }
 }
 
-const getPlayerTeamAssociation = (playerId, tournamentId) => {
-  const match = matchesStore.matches.find(m => 
-    (m.player1Id === playerId || m.player2Id === playerId) &&
-    m.tournamentId === tournamentId &&
-    (m.player1TeamId || m.player2TeamId)
+const getPlayerTeamFromClub = (playerId, tournamentId) => {
+  if (!playerId || !tournamentId) return null
+  
+  const player = opponentsStore.opponents.find(p => p.id === playerId)
+  if (!player || !player.club) return null
+  
+  const team = teamsStore.teams.find(t => 
+    t.tournamentId === tournamentId && 
+    t.name === player.club
   )
-
-  if (!match) return null
-
-  if (match.player1Id === playerId) {
-    return match.player1TeamId
-  } else if (match.player2Id === playerId) {
-    return match.player2TeamId
-  }
-  return null
+  
+  return team ? team.id : null
 }
 
 const onPlayer1Selected = () => {
   if (!isLeagueMatch.value || !formData.value.tournamentId || !formData.value.player1Id) {
-    player1TeamLocked.value = false
+    formData.value.player1TeamId = ''
     return
   }
 
-  const associatedTeamId = getPlayerTeamAssociation(formData.value.player1Id, formData.value.tournamentId)
-  
-  if (associatedTeamId) {
-    formData.value.player1TeamId = associatedTeamId
-    player1TeamLocked.value = true
-  } else {
-    player1TeamLocked.value = false
-  }
+  const teamId = getPlayerTeamFromClub(formData.value.player1Id, formData.value.tournamentId)
+  formData.value.player1TeamId = teamId || ''
 }
 
 const onPlayer2Selected = () => {
   if (!isLeagueMatch.value || !formData.value.tournamentId || !formData.value.player2Id) {
-    player2TeamLocked.value = false
+    formData.value.player2TeamId = ''
     return
   }
 
-  const associatedTeamId = getPlayerTeamAssociation(formData.value.player2Id, formData.value.tournamentId)
-  
-  if (associatedTeamId) {
-    formData.value.player2TeamId = associatedTeamId
-    player2TeamLocked.value = true
-  } else {
-    player2TeamLocked.value = false
-  }
+  const teamId = getPlayerTeamFromClub(formData.value.player2Id, formData.value.tournamentId)
+  formData.value.player2TeamId = teamId || ''
 }
 
 const opponentsList = computed(() => opponentsStore.opponents)
@@ -543,6 +526,13 @@ const allTeamsList = computed(() => {
   }))
 })
 
+const teamsList = computed(() => {
+  return teamsStore.teams.map(t => ({
+    id: t.id,
+    name: t.name
+  }))
+})
+
 const isLeagueMatch = computed(() => {
   const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
   return tournament?.type === 'League'
@@ -551,6 +541,23 @@ const isLeagueMatch = computed(() => {
 const tournamentTeams = computed(() => {
   if (!formData.value.tournamentId) return []
   return teamsStore.teams.filter(t => t.tournamentId === formData.value.tournamentId)
+})
+
+const roundsList = computed(() => {
+  const rounds = new Set()
+  matchesStore.matches.forEach(match => {
+    if (match.round) {
+      rounds.add(match.round)
+    }
+  })
+  return Array.from(rounds).sort((a, b) => {
+    const aNum = parseInt(a)
+    const bNum = parseInt(b)
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return aNum - bNum
+    }
+    return String(a).localeCompare(String(b))
+  })
 })
 
 const filteredMatches = computed(() => {
@@ -571,7 +578,15 @@ const filteredMatches = computed(() => {
   }
 
   if (filterOpponent.value) {
-    matches = matches.filter(m => m.opponentId === filterOpponent.value)
+    matches = matches.filter(m => m.player1Id === filterOpponent.value || m.player2Id === filterOpponent.value || m.opponentId === filterOpponent.value)
+  }
+
+  if (filterTeam.value) {
+    matches = matches.filter(m => m.player1TeamId === filterTeam.value || m.player2TeamId === filterTeam.value)
+  }
+
+  if (filterRound.value) {
+    matches = matches.filter(m => m.round === filterRound.value)
   }
 
   return matches
@@ -579,8 +594,6 @@ const filteredMatches = computed(() => {
 
 const openMatchDialog = (match = null) => {
   dateLocked.value = false
-  player1TeamLocked.value = false
-  player2TeamLocked.value = false
 
   if (match) {
     editingMatch.value = match
@@ -606,7 +619,11 @@ const openMatchDialog = (match = null) => {
       player1TeamId: '',
       player2TeamId: '',
       date: new Date().toISOString().split('T')[0],
-      scores: [{ set: 1, player1Score: null, player2Score: null }],
+      scores: [
+        { set: 1, player1Score: null, player2Score: null },
+        { set: 2, player1Score: null, player2Score: null },
+        { set: 3, player1Score: null, player2Score: null }
+      ],
       notes: '',
       photos: [],
       videoUrls: [],

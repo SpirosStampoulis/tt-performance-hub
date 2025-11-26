@@ -44,11 +44,6 @@
               :key="match.id"
               :to="`/matches/${match.id}`"
             >
-              <template v-slot:prepend>
-                <v-avatar :color="getMatchResult(match) === 'Win' ? 'success' : 'error'">
-                  <v-icon>{{ getMatchResult(match) === 'Win' ? 'mdi-check' : 'mdi-close' }}</v-icon>
-                </v-avatar>
-              </template>
               <v-list-item-title>
                 {{ getPlayerName(match.player1Id || match.opponentId) }} vs {{ getPlayerName(match.player2Id || match.opponentId) }}
               </v-list-item-title>

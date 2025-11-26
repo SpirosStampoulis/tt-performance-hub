@@ -12,14 +12,7 @@
       <v-col cols="12" md="8">
         <v-card class="mb-4">
           <v-card-title>
-            <v-row align="center">
-              <v-col>
-                <v-avatar :color="getMatchResult === 'Win' ? 'success' : 'error'" class="mr-3">
-                  <v-icon>{{ getMatchResult === 'Win' ? 'mdi-check' : 'mdi-close' }}</v-icon>
-                </v-avatar>
-                {{ getMatchResult }}
-              </v-col>
-            </v-row>
+            {{ getMatchResult }}
           </v-card-title>
           <v-card-text>
             <div class="text-h4 mb-2">{{ getPlayer1Name }} vs {{ getPlayer2Name }}</div>

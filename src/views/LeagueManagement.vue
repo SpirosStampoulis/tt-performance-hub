@@ -16,8 +16,8 @@
         <v-btn color="primary" prepend-icon="mdi-plus" @click="showTeamDialog = true" class="mr-2">
           Add Team
         </v-btn>
-        <v-btn color="info" prepend-icon="mdi-calendar-plus" @click="openScheduleMatchDialog">
-          Schedule Match
+        <v-btn color="secondary" prepend-icon="mdi-tournament" @click="openCreateTournamentDialog">
+          Create Tournament
         </v-btn>
       </v-col>
     </v-row>
@@ -1471,6 +1471,10 @@ const openScheduleMatchDialog = () => {
       scheduled: 'true'
     }
   })
+}
+
+const openCreateTournamentDialog = () => {
+  router.push('/tournaments')
 }
 
 const openMatchForScores = (match) => {

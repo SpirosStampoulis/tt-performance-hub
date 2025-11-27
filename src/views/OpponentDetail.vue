@@ -6,6 +6,26 @@
           Back to Players
         </v-btn>
       </v-col>
+      <v-col cols="12" md="4">
+        <v-select
+          v-model="selectedTournament"
+          :items="allTournaments"
+          item-title="displayName"
+          item-value="id"
+          label="Filter by Tournament/League"
+          variant="outlined"
+          density="comfortable"
+          clearable
+          prepend-inner-icon="mdi-filter"
+        >
+          <template v-slot:item="{ props, item }">
+            <v-list-item v-bind="props" :title="null">
+              <v-list-item-title>{{ item.raw.displayName }}</v-list-item-title>
+              <v-list-item-subtitle>{{ item.raw.type }}</v-list-item-subtitle>
+            </v-list-item>
+          </template>
+        </v-select>
+      </v-col>
     </v-row>
 
     <v-row>
@@ -207,11 +227,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useOpponentsStore } from '../stores/opponents'
 import { useMatchesStore } from '../stores/matches'
+import { useTournamentsStore } from '../stores/tournaments'
 import { formatDate } from '../utils/date'
 
 const route = useRoute()
 const opponentsStore = useOpponentsStore()
 const matchesStore = useMatchesStore()
+const tournamentsStore = useTournamentsStore()
 
 const opponent = ref(null)
 const editWeaknesses = ref(false)
@@ -221,15 +243,36 @@ const weaknesses = ref('')
 onMounted(async () => {
   await Promise.all([
     matchesStore.fetchMatches(),
-    opponentsStore.fetchOpponents()
+    opponentsStore.fetchOpponents(),
+    tournamentsStore.fetchTournaments()
   ])
   opponent.value = await opponentsStore.getOpponent(route.params.id)
   weaknesses.value = opponent.value?.weaknesses || ''
   weaknessForm.value = weaknesses.value
 })
 
+const selectedTournament = ref(null)
+
+const allTournaments = computed(() => {
+  return tournamentsStore.tournaments
+    .map(t => ({
+      ...t,
+      displayName: `${t.name} (${t.year})`
+    }))
+    .sort((a, b) => {
+      if (b.year !== a.year) return (b.year || 0) - (a.year || 0)
+      return a.name.localeCompare(b.name)
+    })
+})
+
 const matches = computed(() => {
-  return matchesStore.getMatchesByOpponent(route.params.id)
+  let playerMatches = matchesStore.getMatchesByOpponent(route.params.id)
+  
+  if (selectedTournament.value) {
+    playerMatches = playerMatches.filter(m => m.tournamentId === selectedTournament.value)
+  }
+  
+  return playerMatches
 })
 
 const headToHead = computed(() => {

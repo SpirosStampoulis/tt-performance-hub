@@ -155,13 +155,22 @@
               </template>
             </v-autocomplete>
 
+            <v-autocomplete
+              v-if="isTournamentMatch && availableGroupRounds.length > 0"
+              v-model="formData.round"
+              :items="availableGroupRounds"
+              label="Round/Group"
+              variant="outlined"
+              :rules="[v => !!v || 'Round is required']"
+            ></v-autocomplete>
+            
             <v-text-field
-              v-if="isLeagueMatch"
+              v-else-if="isLeagueMatch || isTournamentMatch"
               v-model="formData.round"
               label="Round"
               variant="outlined"
-              placeholder="e.g., Round 1, Round 5"
-              :rules="[v => !!v || 'Round is required for league matches']"
+              :placeholder="isTournamentMatch ? 'e.g., Group A, Quarter-Final' : 'e.g., Round 1, Round 5'"
+              :rules="[v => !!v || 'Round is required']"
               @blur="checkRoundDate"
             ></v-text-field>
 
@@ -662,6 +671,10 @@ watch(() => formData.value.tournamentId, async (newTournamentId) => {
   dateLocked.value = false
   if (formData.value.player1Id) onPlayer1Selected()
   if (formData.value.player2Id) onPlayer2Selected()
+  // Check date locking for tournament matches
+  if (newTournamentId && isTournamentMatch.value) {
+    checkRoundDate()
+  }
 })
 
 watch(() => formData.value.round, () => {
@@ -669,23 +682,52 @@ watch(() => formData.value.round, () => {
 })
 
 const checkRoundDate = () => {
-  if (!formData.value.tournamentId || !formData.value.round || !isLeagueMatch.value) {
+  if (!formData.value.tournamentId) {
     dateLocked.value = false
     return
   }
 
-  const existingMatch = matchesStore.matches.find(m => 
-    m.tournamentId === formData.value.tournamentId && 
-    m.round === formData.value.round &&
-    m.id !== editingMatch.value?.id
-  )
+  // For league matches: lock date by round
+  if (isLeagueMatch.value && formData.value.round) {
+    const existingMatch = matchesStore.matches.find(m => 
+      m.tournamentId === formData.value.tournamentId && 
+      m.round === formData.value.round &&
+      m.id !== editingMatch.value?.id
+    )
 
-  if (existingMatch && existingMatch.date) {
-    formData.value.date = existingMatch.date.toISOString().split('T')[0]
-    dateLocked.value = true
-  } else {
-    dateLocked.value = false
+    if (existingMatch && existingMatch.date) {
+      const matchDate = existingMatch.date instanceof Date 
+        ? existingMatch.date 
+        : (existingMatch.date?.toDate ? existingMatch.date.toDate() : new Date(existingMatch.date))
+      formData.value.date = matchDate.toISOString().split('T')[0]
+      dateLocked.value = true
+    } else {
+      dateLocked.value = false
+    }
+    return
   }
+
+  // For tournament matches: lock date for all matches in the tournament
+  if (isTournamentMatch.value) {
+    const existingMatch = matchesStore.matches.find(m => 
+      m.tournamentId === formData.value.tournamentId &&
+      m.id !== editingMatch.value?.id &&
+      m.date
+    )
+
+    if (existingMatch && existingMatch.date) {
+      const matchDate = existingMatch.date instanceof Date 
+        ? existingMatch.date 
+        : (existingMatch.date?.toDate ? existingMatch.date.toDate() : new Date(existingMatch.date))
+      formData.value.date = matchDate.toISOString().split('T')[0]
+      dateLocked.value = true
+    } else {
+      dateLocked.value = false
+    }
+    return
+  }
+
+  dateLocked.value = false
 }
 
 const getPlayerTeamFromClub = (playerId, tournamentId) => {
@@ -860,6 +902,21 @@ const onTeam2Selected = () => {
 const opponentsList = computed(() => opponentsStore.opponents)
 
 const filteredPlayer1List = computed(() => {
+  // Filter by group for tournament matches
+  if (isTournamentMatch.value && formData.value.tournamentId && formData.value.round) {
+    const round = formData.value.round
+    if (round.startsWith('Group ')) {
+      const groupName = round.replace('Group ', '')
+      const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
+      if (tournament?.groups) {
+        const group = tournament.groups.find(g => g.name === groupName)
+        if (group?.players) {
+          return opponentsList.value.filter(player => group.players.includes(player.id))
+        }
+      }
+    }
+  }
+  
   if (!isLeagueMatch.value || !formData.value.tournamentId) {
     return opponentsList.value
   }
@@ -878,8 +935,25 @@ const filteredPlayer1List = computed(() => {
 })
 
 const filteredPlayer2List = computed(() => {
+  // Filter by group for tournament matches
+  if (isTournamentMatch.value && formData.value.tournamentId && formData.value.round) {
+    const round = formData.value.round
+    if (round.startsWith('Group ')) {
+      const groupName = round.replace('Group ', '')
+      const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
+      if (tournament?.groups) {
+        const group = tournament.groups.find(g => g.name === groupName)
+        if (group?.players) {
+          return opponentsList.value.filter(player => 
+            group.players.includes(player.id) && player.id !== formData.value.player1Id
+          )
+        }
+      }
+    }
+  }
+  
   if (!isLeagueMatch.value || !formData.value.tournamentId) {
-    return opponentsList.value
+    return opponentsList.value.filter(player => player.id !== formData.value.player1Id)
   }
   
   // If team is selected, only show players from that team
@@ -887,25 +961,6 @@ const filteredPlayer2List = computed(() => {
     const team = teamsStore.teams.find(t => t.id === formData.value.player2TeamId)
     if (team) {
       return opponentsList.value.filter(player => {
-        return player.club === team.name
-      })
-    }
-  }
-  
-  return opponentsList.value
-})
-
-const filteredPlayer3List = computed(() => {
-  if (!isLeagueMatch.value || !formData.value.tournamentId) {
-    return opponentsList.value
-  }
-  
-  // Player 3 must be from Team 1 (same as Player 1)
-  if (formData.value.player1TeamId) {
-    const team = teamsStore.teams.find(t => t.id === formData.value.player1TeamId)
-    if (team) {
-      return opponentsList.value.filter(player => {
-        // Exclude player1 to avoid selecting the same player twice
         return player.club === team.name && player.id !== formData.value.player1Id
       })
     }
@@ -914,9 +969,77 @@ const filteredPlayer3List = computed(() => {
   return opponentsList.value.filter(player => player.id !== formData.value.player1Id)
 })
 
-const filteredPlayer4List = computed(() => {
+const filteredPlayer3List = computed(() => {
+  // Filter by group for tournament matches
+  if (isTournamentMatch.value && formData.value.tournamentId && formData.value.round) {
+    const round = formData.value.round
+    if (round.startsWith('Group ')) {
+      const groupName = round.replace('Group ', '')
+      const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
+      if (tournament?.groups) {
+        const group = tournament.groups.find(g => g.name === groupName)
+        if (group?.players) {
+          return opponentsList.value.filter(player => 
+            group.players.includes(player.id) && 
+            player.id !== formData.value.player1Id && 
+            player.id !== formData.value.player2Id
+          )
+        }
+      }
+    }
+  }
+  
   if (!isLeagueMatch.value || !formData.value.tournamentId) {
-    return opponentsList.value
+    return opponentsList.value.filter(player => 
+      player.id !== formData.value.player1Id && player.id !== formData.value.player2Id
+    )
+  }
+  
+  // Player 3 must be from Team 1 (same as Player 1)
+  if (formData.value.player1TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player1TeamId)
+    if (team) {
+      return opponentsList.value.filter(player => {
+        // Exclude player1 and player2 to avoid selecting the same player twice
+        return player.club === team.name && 
+               player.id !== formData.value.player1Id && 
+               player.id !== formData.value.player2Id
+      })
+    }
+  }
+  
+  return opponentsList.value.filter(player => 
+    player.id !== formData.value.player1Id && player.id !== formData.value.player2Id
+  )
+})
+
+const filteredPlayer4List = computed(() => {
+  // Filter by group for tournament matches
+  if (isTournamentMatch.value && formData.value.tournamentId && formData.value.round) {
+    const round = formData.value.round
+    if (round.startsWith('Group ')) {
+      const groupName = round.replace('Group ', '')
+      const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
+      if (tournament?.groups) {
+        const group = tournament.groups.find(g => g.name === groupName)
+        if (group?.players) {
+          return opponentsList.value.filter(player => 
+            group.players.includes(player.id) && 
+            player.id !== formData.value.player1Id && 
+            player.id !== formData.value.player2Id &&
+            player.id !== formData.value.player3Id
+          )
+        }
+      }
+    }
+  }
+  
+  if (!isLeagueMatch.value || !formData.value.tournamentId) {
+    return opponentsList.value.filter(player => 
+      player.id !== formData.value.player1Id && 
+      player.id !== formData.value.player2Id &&
+      player.id !== formData.value.player3Id
+    )
   }
   
   // Player 4 must be from Team 2 (same as Player 2)
@@ -924,13 +1047,20 @@ const filteredPlayer4List = computed(() => {
     const team = teamsStore.teams.find(t => t.id === formData.value.player2TeamId)
     if (team) {
       return opponentsList.value.filter(player => {
-        // Exclude player2 to avoid selecting the same player twice
-        return player.club === team.name && player.id !== formData.value.player2Id
+        // Exclude player1, player2, and player3 to avoid selecting the same player twice
+        return player.club === team.name && 
+               player.id !== formData.value.player2Id &&
+               player.id !== formData.value.player1Id &&
+               player.id !== formData.value.player3Id
       })
     }
   }
   
-  return opponentsList.value.filter(player => player.id !== formData.value.player2Id)
+  return opponentsList.value.filter(player => 
+    player.id !== formData.value.player1Id && 
+    player.id !== formData.value.player2Id &&
+    player.id !== formData.value.player3Id
+  )
 })
 
 const tournamentsList = computed(() => {
@@ -967,6 +1097,20 @@ const tournamentTeamsList = computed(() => {
 const isLeagueMatch = computed(() => {
   const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
   return tournament?.type === 'League'
+})
+
+const isTournamentMatch = computed(() => {
+  const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
+  return tournament?.type === 'Tournament'
+})
+
+const availableGroupRounds = computed(() => {
+  if (!isTournamentMatch.value || !formData.value.tournamentId) return []
+  
+  const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
+  if (!tournament?.groups) return []
+  
+  return tournament.groups.map(g => `Group ${g.name}`)
 })
 
 const tournamentTeams = computed(() => {

@@ -56,6 +56,14 @@
             <v-btn icon="mdi-delete" size="small" color="error" @click="confirmDelete(tournament)"></v-btn>
             <v-spacer></v-spacer>
             <v-btn variant="text" @click="viewMatches(tournament)">View Matches</v-btn>
+            <v-btn 
+              v-if="tournament.type === 'Tournament'" 
+              variant="text" 
+              color="primary"
+              @click="manageTournament(tournament)"
+            >
+              Manage Tournament
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -97,6 +105,43 @@
               hint="This tournament will be pre-selected in dropdowns"
               persistent-hint
             ></v-checkbox>
+
+            <v-divider class="my-4" v-if="formData.type === 'Tournament'"></v-divider>
+
+            <template v-if="formData.type === 'Tournament'">
+              <div class="text-subtitle-1 mb-2">Tournament Configuration</div>
+              
+              <v-text-field
+                v-model.number="formData.numberOfGroups"
+                label="Number of Groups"
+                type="number"
+                variant="outlined"
+                :min="2"
+                :max="8"
+                hint="How many groups in the group stage"
+                persistent-hint
+              ></v-text-field>
+
+              <v-text-field
+                v-model.number="formData.playersAdvancingPerGroup"
+                label="Players Advancing Per Group"
+                type="number"
+                variant="outlined"
+                :min="1"
+                :max="4"
+                hint="How many players advance from each group (default: 2)"
+                persistent-hint
+              ></v-text-field>
+
+              <v-select
+                v-model="formData.groupAssignmentMethod"
+                :items="['Manual', 'Random']"
+                label="Group Assignment Method"
+                variant="outlined"
+                hint="How players will be assigned to groups"
+                persistent-hint
+              ></v-select>
+            </template>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -146,7 +191,11 @@ const formData = ref({
   name: '',
   type: '',
   year: new Date().getFullYear(),
-  isDefault: false
+  isDefault: false,
+  numberOfGroups: null,
+  playersAdvancingPerGroup: 2,
+  groupAssignmentMethod: 'Manual',
+  groups: []
 })
 
 onMounted(async () => {
@@ -184,7 +233,11 @@ const openTournamentDialog = (tournament = null) => {
       name: '',
       type: '',
       year: new Date().getFullYear(),
-      isDefault: false
+      isDefault: false,
+      numberOfGroups: null,
+      playersAdvancingPerGroup: 2,
+      groupAssignmentMethod: 'Manual',
+      groups: []
     }
   }
   tournamentDialog.value = true
@@ -242,6 +295,10 @@ const getMatchCount = (tournamentId) => {
 
 const viewMatches = (tournament) => {
   router.push({ name: 'Matches', query: { tournament: tournament.id } })
+}
+
+const manageTournament = (tournament) => {
+  router.push({ path: '/tournaments/manage', query: { id: tournament.id } })
 }
 </script>
 

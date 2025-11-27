@@ -35,6 +35,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/tournaments/manage',
+    name: 'TournamentManagement',
+    component: () => import('../views/TournamentManagement.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/leagues',
     name: 'LeagueManagement',
     component: () => import('../views/LeagueManagement.vue'),

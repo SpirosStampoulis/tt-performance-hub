@@ -12,7 +12,7 @@
           <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/"></v-list-item>
           <v-list-item prepend-icon="mdi-trophy" title="Matches" value="matches" to="/matches"></v-list-item>
           <v-list-item prepend-icon="mdi-calendar" title="Calendar" value="calendar" to="/calendar"></v-list-item>
-          <v-list-item prepend-icon="mdi-tournament" title="Tournaments" value="tournaments" to="/tournaments"></v-list-item>
+          <v-list-item prepend-icon="mdi-tournament" title="Tournaments" value="tournaments" to="/tournaments/manage"></v-list-item>
           <v-list-item prepend-icon="mdi-shield-account" title="League Management" value="leagues" to="/leagues"></v-list-item>
           <v-list-item prepend-icon="mdi-account-group" title="Players" value="opponents" to="/opponents"></v-list-item>
           <v-list-item prepend-icon="mdi-school" title="Skills" value="skills" to="/skills"></v-list-item>
@@ -65,6 +65,7 @@ const pageTitle = computed(() => {
     MatchDetail: 'Match Details',
     Calendar: 'Match Calendar',
     Tournaments: 'Tournaments',
+    TournamentManagement: 'Tournament Management',
     LeagueManagement: 'League Management',
     Opponents: 'Players',
     OpponentDetail: 'Player Profile',

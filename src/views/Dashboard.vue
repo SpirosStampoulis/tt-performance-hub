@@ -1,11 +1,34 @@
 <template>
   <v-container>
+    <v-row class="mb-4">
+      <v-col cols="12" md="4">
+        <v-select
+          v-model="selectedTournament"
+          :items="allTournaments"
+          item-title="displayName"
+          item-value="id"
+          label="Filter by Tournament/League"
+          variant="outlined"
+          density="comfortable"
+          clearable
+          prepend-inner-icon="mdi-filter"
+        >
+          <template v-slot:item="{ props, item }">
+            <v-list-item v-bind="props" :title="null">
+              <v-list-item-title>{{ item.raw.displayName }}</v-list-item-title>
+              <v-list-item-subtitle>{{ item.raw.type }}</v-list-item-subtitle>
+            </v-list-item>
+          </template>
+        </v-select>
+      </v-col>
+    </v-row>
+    
     <v-row>
       <v-col cols="12" md="3">
         <v-card>
           <v-card-text>
             <div class="text-h6 mb-2">Total Matches</div>
-            <div class="text-h3">{{ matchesStore.totalMatches }}</div>
+            <div class="text-h3">{{ dashboardStats.totalMatches }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -14,8 +37,8 @@
         <v-card>
           <v-card-text>
             <div class="text-h6 mb-2">Win Rate</div>
-            <div class="text-h3">{{ matchesStore.winPercentage }}%</div>
-            <div class="text-caption">{{ matchesStore.winLossRecord.wins }}W - {{ matchesStore.winLossRecord.losses }}L</div>
+            <div class="text-h3">{{ dashboardStats.winPercentage }}%</div>
+            <div class="text-caption">{{ dashboardStats.wins }}W - {{ dashboardStats.losses }}L</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -86,9 +109,9 @@
             Recent Matches
           </v-card-title>
           <v-divider></v-divider>
-          <v-list v-if="matchesStore.recentMatches.length > 0">
+          <v-list v-if="filteredMatches.slice(0, 5).length > 0">
             <v-list-item
-              v-for="match in matchesStore.recentMatches"
+              v-for="match in filteredMatches.slice(0, 5)"
               :key="match.id"
               :to="`/matches/${match.id}`"
             >
@@ -253,6 +276,64 @@ const opponentsStore = useOpponentsStore()
 const skillsStore = useSkillsStore()
 const tournamentsStore = useTournamentsStore()
 const showQuickActions = ref(false)
+const selectedTournament = ref(null)
+
+const allTournaments = computed(() => {
+  return tournamentsStore.tournaments
+    .map(t => ({
+      ...t,
+      displayName: `${t.name} (${t.year})`
+    }))
+    .sort((a, b) => {
+      if (b.year !== a.year) return (b.year || 0) - (a.year || 0)
+      return a.name.localeCompare(b.name)
+    })
+})
+
+const filteredMatches = computed(() => {
+  if (!selectedTournament.value) return matchesStore.matches
+  return matchesStore.matches.filter(m => m.tournamentId === selectedTournament.value)
+})
+
+const dashboardStats = computed(() => {
+  const matches = filteredMatches.value
+  const totalMatches = matches.length
+  
+  let wins = 0
+  let losses = 0
+  let totalSetsWon = 0
+  let totalSetsLost = 0
+  
+  matches.forEach(match => {
+    const myTotalScore = match.scores?.reduce((sum, s) => sum + (s.myScore || 0), 0) || 0
+    const oppTotalScore = match.scores?.reduce((sum, s) => sum + (s.oppScore || 0), 0) || 0
+    
+    if (myTotalScore > oppTotalScore) wins++
+    else if (oppTotalScore > myTotalScore) losses++
+    
+    match.scores?.forEach(score => {
+      const myScore = score.myScore || 0
+      const oppScore = score.oppScore || 0
+      if (myScore > oppScore) totalSetsWon++
+      else if (oppScore > myScore) totalSetsLost++
+    })
+  })
+  
+  const winPercentage = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : 0
+  const setsWonPercentage = (totalSetsWon + totalSetsLost) > 0 
+    ? ((totalSetsWon / (totalSetsWon + totalSetsLost)) * 100).toFixed(1) 
+    : 0
+  
+  return {
+    totalMatches,
+    wins,
+    losses,
+    winPercentage,
+    totalSetsWon,
+    totalSetsLost,
+    setsWonPercentage
+  }
+})
 
 onMounted(async () => {
   await Promise.all([

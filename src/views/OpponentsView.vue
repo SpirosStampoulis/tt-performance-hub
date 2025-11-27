@@ -19,16 +19,6 @@
           clearable
         ></v-text-field>
       </v-col>
-      <v-col cols="12" md="6">
-        <v-select
-          v-model="filterStyle"
-          :items="['Aggressive', 'Defensive', 'Mixed']"
-          label="Filter by Playing Style"
-          variant="outlined"
-          density="compact"
-          clearable
-        ></v-select>
-      </v-col>
     </v-row>
 
     <v-row>
@@ -44,9 +34,6 @@
               </v-col>
               <v-col>
                 <div class="text-h6">{{ opponent.name }}</div>
-                <v-chip size="small" class="mr-1" :color="getStyleColor(opponent.playingStyle)">
-                  {{ opponent.playingStyle }}
-                </v-chip>
                 <div class="text-caption mt-2">{{ opponent.club || 'No team' }}</div>
                 <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.alphaRanking || opponent.topspinRanking" class="text-caption mt-1">
                   <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints" class="mb-1">
@@ -86,14 +73,6 @@
               variant="outlined"
               :rules="[v => !!v || 'Name is required']"
             ></v-text-field>
-
-            <v-select
-              v-model="formData.playingStyle"
-              :items="['Aggressive', 'Defensive', 'Mixed']"
-              label="Playing Style"
-              variant="outlined"
-              :rules="[v => !!v || 'Playing style is required']"
-            ></v-select>
 
             <v-select
               v-model="formData.club"
@@ -242,7 +221,6 @@ const deleteDialog = ref(false)
 const editingOpponent = ref(null)
 const opponentToDelete = ref(null)
 const search = ref('')
-const filterStyle = ref(null)
 const opponentForm = ref(null)
 const photoFile = ref(null)
 const saving = ref(false)
@@ -255,7 +233,6 @@ const newTeam = ref({
 
 const formData = ref({
   name: '',
-  playingStyle: '',
   club: '',
   mttaStartPosition: null,
   mttaCurrentPosition: null,
@@ -302,9 +279,6 @@ const filteredOpponents = computed(() => {
     )
   }
 
-  if (filterStyle.value) {
-    opponents = opponents.filter(o => o.playingStyle === filterStyle.value)
-  }
 
   return opponents
 })
@@ -317,7 +291,6 @@ const openOpponentDialog = (opponent = null) => {
     editingOpponent.value = null
     formData.value = {
       name: '',
-      playingStyle: '',
       club: '',
       mttaStartPosition: null,
       mttaCurrentPosition: null,
@@ -353,7 +326,6 @@ const saveOpponent = async () => {
 
     const opponentData = {
       name: formData.value.name,
-      playingStyle: formData.value.playingStyle,
       club: formData.value.club || null,
       mttaStartPosition: formData.value.mttaStartPosition || null,
       mttaCurrentPosition: formData.value.mttaCurrentPosition || null,
@@ -420,14 +392,6 @@ const getInitials = (name) => {
     .slice(0, 2)
 }
 
-const getStyleColor = (style) => {
-  const colors = {
-    Aggressive: 'error',
-    Defensive: 'success',
-    Mixed: 'info'
-  }
-  return colors[style] || 'grey'
-}
 
 const getMatchCount = (opponentId) => {
   return matchesStore.getMatchesByOpponent(opponentId).length

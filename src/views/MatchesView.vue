@@ -77,7 +77,11 @@
               <v-col>
                 <div class="d-flex align-center mb-1">
                   <div class="text-h6">
-                    <span v-if="match.player1Id && match.player2Id">
+                    <span v-if="match.isDoubles && match.player1Id && match.player2Id && match.player3Id && match.player4Id">
+                      {{ getPlayerName(match.player1Id) }} & {{ getPlayerName(match.player3Id) }} vs {{ getPlayerName(match.player2Id) }} & {{ getPlayerName(match.player4Id) }}
+                      <v-chip size="x-small" color="info" class="ml-2">Doubles</v-chip>
+                    </span>
+                    <span v-else-if="match.player1Id && match.player2Id">
                       {{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}
                     </span>
                     <span v-else-if="match.player1TeamId && match.player2TeamId">
@@ -217,8 +221,6 @@
                 isScheduledMatch ? null : (v => !!v || 'Player 1 is required'),
                 v => validatePlayerTeam(v, formData.player1TeamId, 'Player 1')
               ].filter(r => r !== null)"
-              :hint="getPlayer1Hint()"
-              persistent-hint
               @update:model-value="onPlayer1Selected"
             >
               <template v-slot:append>
@@ -237,8 +239,6 @@
                 isScheduledMatch ? null : (v => !!v || 'Player 2 is required'),
                 v => validatePlayerTeam(v, formData.player2TeamId, 'Player 2')
               ].filter(r => r !== null)"
-              :hint="getPlayer2Hint()"
-              persistent-hint
               @update:model-value="onPlayer2Selected"
             >
               <template v-slot:append>
@@ -246,12 +246,57 @@
               </template>
             </v-autocomplete>
 
-            <v-checkbox
-              v-model="isScheduledMatch"
-              label="This is a scheduled match (no scores yet)"
-              class="mb-2"
-              @update:model-value="onScheduledMatchChange"
-            ></v-checkbox>
+            <template v-if="isDoublesMatch">
+              <v-autocomplete
+                v-model="formData.player3Id"
+                :items="filteredPlayer3List"
+                item-title="name"
+                item-value="id"
+                label="Player 3 (Team 1 - Second Player)"
+                variant="outlined"
+                :rules="[
+                  isScheduledMatch ? null : (v => !!v || 'Player 3 is required for doubles'),
+                  v => validatePlayerTeam(v, formData.player1TeamId, 'Player 3')
+                ].filter(r => r !== null)"
+                @update:model-value="onPlayer3Selected"
+              >
+                <template v-slot:append>
+                  <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true"></v-btn>
+                </template>
+              </v-autocomplete>
+
+              <v-autocomplete
+                v-model="formData.player4Id"
+                :items="filteredPlayer4List"
+                item-title="name"
+                item-value="id"
+                label="Player 4 (Team 2 - Second Player)"
+                variant="outlined"
+                :rules="[
+                  isScheduledMatch ? null : (v => !!v || 'Player 4 is required for doubles'),
+                  v => validatePlayerTeam(v, formData.player2TeamId, 'Player 4')
+                ].filter(r => r !== null)"
+                @update:model-value="onPlayer4Selected"
+              >
+                <template v-slot:append>
+                  <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true"></v-btn>
+                </template>
+              </v-autocomplete>
+            </template>
+
+            <div class="d-flex mb-2">
+              <v-checkbox
+                v-model="isScheduledMatch"
+                label="This is a scheduled match (no scores yet)"
+                @update:model-value="onScheduledMatchChange"
+              ></v-checkbox>
+              <v-checkbox
+                v-model="isDoublesMatch"
+                label="Doubles Match (2 vs 2)"
+                class="ml-4"
+                @update:model-value="onDoublesMatchChange"
+              ></v-checkbox>
+            </div>
 
             <v-card variant="outlined" class="mb-4" v-if="!isScheduledMatch">
               <v-card-title class="text-subtitle-1">Scores</v-card-title>
@@ -414,12 +459,6 @@
             variant="outlined"
           ></v-text-field>
           <v-select
-            v-model="newOpponent.playingStyle"
-            :items="['Aggressive', 'Defensive', 'Mixed']"
-            label="Playing Style"
-            variant="outlined"
-          ></v-select>
-          <v-select
             v-model="newOpponent.club"
             :items="allTeamsList"
             item-title="name"
@@ -544,10 +583,13 @@ const filterRound = ref(null)
 const matchForm = ref(null)
 const dateLocked = ref(false)
 const isScheduledMatch = ref(false)
+const isDoublesMatch = ref(false)
 
 const formData = ref({
   player1Id: '',
   player2Id: '',
+  player3Id: '',
+  player4Id: '',
   tournamentId: '',
   round: '',
   player1TeamId: '',
@@ -564,12 +606,12 @@ const formData = ref({
   opponentWeaknesses: '',
   photos: [],
   videoUrls: [],
-  serveStats: { successRate: 0, returnPoints: 0 }
+  serveStats: { successRate: 0, returnPoints: 0 },
+  isDoubles: false
 })
 
 const newOpponent = ref({
   name: '',
-  playingStyle: '',
   club: ''
 })
 
@@ -691,6 +733,22 @@ const getPlayer2Hint = () => {
   return ''
 }
 
+const getPlayer3Hint = () => {
+  if (isLeagueMatch.value && formData.value.player1TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player1TeamId)
+    return team ? `Only players from ${team.name} are shown (excluding Player 1)` : ''
+  }
+  return ''
+}
+
+const getPlayer4Hint = () => {
+  if (isLeagueMatch.value && formData.value.player2TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player2TeamId)
+    return team ? `Only players from ${team.name} are shown (excluding Player 2)` : ''
+  }
+  return ''
+}
+
 const onPlayer1Selected = () => {
   if (!isLeagueMatch.value || !formData.value.tournamentId || !formData.value.player1Id) {
     if (!isScheduledMatch.value) {
@@ -734,6 +792,48 @@ const onPlayer2Selected = () => {
     // Auto-fill team if not set
     const teamId = getPlayerTeamFromClub(formData.value.player2Id, formData.value.tournamentId)
     formData.value.player2TeamId = teamId || ''
+  }
+}
+
+const onPlayer3Selected = () => {
+  if (!isLeagueMatch.value || !formData.value.tournamentId || !formData.value.player3Id) {
+    return
+  }
+
+  // Player 3 must be from Team 1 (same as Player 1)
+  if (formData.value.player1TeamId) {
+    const playerTeamId = getPlayerTeamFromClub(formData.value.player3Id, formData.value.tournamentId)
+    if (playerTeamId !== formData.value.player1TeamId) {
+      // Clear player if it doesn't match Team 1
+      formData.value.player3Id = ''
+      return
+    }
+    // Ensure player3 is not the same as player1
+    if (formData.value.player3Id === formData.value.player1Id) {
+      formData.value.player3Id = ''
+      return
+    }
+  }
+}
+
+const onPlayer4Selected = () => {
+  if (!isLeagueMatch.value || !formData.value.tournamentId || !formData.value.player4Id) {
+    return
+  }
+
+  // Player 4 must be from Team 2 (same as Player 2)
+  if (formData.value.player2TeamId) {
+    const playerTeamId = getPlayerTeamFromClub(formData.value.player4Id, formData.value.tournamentId)
+    if (playerTeamId !== formData.value.player2TeamId) {
+      // Clear player if it doesn't match Team 2
+      formData.value.player4Id = ''
+      return
+    }
+    // Ensure player4 is not the same as player2
+    if (formData.value.player4Id === formData.value.player2Id) {
+      formData.value.player4Id = ''
+      return
+    }
   }
 }
 
@@ -793,6 +893,44 @@ const filteredPlayer2List = computed(() => {
   }
   
   return opponentsList.value
+})
+
+const filteredPlayer3List = computed(() => {
+  if (!isLeagueMatch.value || !formData.value.tournamentId) {
+    return opponentsList.value
+  }
+  
+  // Player 3 must be from Team 1 (same as Player 1)
+  if (formData.value.player1TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player1TeamId)
+    if (team) {
+      return opponentsList.value.filter(player => {
+        // Exclude player1 to avoid selecting the same player twice
+        return player.club === team.name && player.id !== formData.value.player1Id
+      })
+    }
+  }
+  
+  return opponentsList.value.filter(player => player.id !== formData.value.player1Id)
+})
+
+const filteredPlayer4List = computed(() => {
+  if (!isLeagueMatch.value || !formData.value.tournamentId) {
+    return opponentsList.value
+  }
+  
+  // Player 4 must be from Team 2 (same as Player 2)
+  if (formData.value.player2TeamId) {
+    const team = teamsStore.teams.find(t => t.id === formData.value.player2TeamId)
+    if (team) {
+      return opponentsList.value.filter(player => {
+        // Exclude player2 to avoid selecting the same player twice
+        return player.club === team.name && player.id !== formData.value.player2Id
+      })
+    }
+  }
+  
+  return opponentsList.value.filter(player => player.id !== formData.value.player2Id)
 })
 
 const tournamentsList = computed(() => {
@@ -890,18 +1028,28 @@ const openMatchDialog = (match = null) => {
 
   if (match) {
     editingMatch.value = match
+    const matchDate = match.date instanceof Date ? match.date : match.date.toDate()
+    const hasScores = match.scores && match.scores.length > 0 && match.scores.some(s => (s.player1Score || s.myScore) && (s.player2Score || s.oppScore))
+    isScheduledMatch.value = match.status === 'scheduled' || (!hasScores && matchDate > new Date())
+    isDoublesMatch.value = match.isDoubles || false
+    
     formData.value = {
       ...match,
-      date: match.date.toISOString().split('T')[0],
+      date: matchDate.toISOString().split('T')[0],
       youtubeUrl: match.videoUrls && match.videoUrls.length > 0 ? match.videoUrls[0] : '',
       tacticsUsed: match.tacticsUsed || '',
       tacticsToImprove: match.tacticsToImprove || '',
-      opponentWeaknesses: match.opponentWeaknesses || ''
+      opponentWeaknesses: match.opponentWeaknesses || '',
+      player3Id: match.player3Id || '',
+      player4Id: match.player4Id || '',
+      isDoubles: match.isDoubles || false
     }
     setTimeout(() => {
       checkRoundDate()
       if (formData.value.player1Id) onPlayer1Selected()
       if (formData.value.player2Id) onPlayer2Selected()
+      if (formData.value.player3Id) onPlayer3Selected()
+      if (formData.value.player4Id) onPlayer4Selected()
     }, 100)
   } else {
     editingMatch.value = null
@@ -909,6 +1057,7 @@ const openMatchDialog = (match = null) => {
     const matchDate = new Date(today)
     matchDate.setDate(today.getDate() + 7)
     isScheduledMatch.value = true
+    isDoublesMatch.value = false
     
     // Find default tournament
     const defaultTournament = tournamentsStore.tournaments.find(t => t.isDefault)
@@ -917,6 +1066,8 @@ const openMatchDialog = (match = null) => {
       round: '',
       player1Id: '',
       player2Id: '',
+      player3Id: '',
+      player4Id: '',
       player1TeamId: '',
       player2TeamId: '',
       date: matchDate.toISOString().split('T')[0],
@@ -986,6 +1137,28 @@ const saveMatch = async () => {
       alert('Please select both players for completed matches')
       return
     }
+    // For doubles matches, require all 4 players
+    if (isDoublesMatch.value) {
+      if (!formData.value.player3Id || !formData.value.player4Id) {
+        alert('Please select all 4 players for doubles matches')
+        return
+      }
+      // Validate doubles players are from correct teams
+      if (formData.value.player1TeamId) {
+        const player3TeamId = getPlayerTeamFromClub(formData.value.player3Id, formData.value.tournamentId)
+        if (player3TeamId !== formData.value.player1TeamId) {
+          alert('Player 3 must be from the same team as Player 1')
+          return
+        }
+      }
+      if (formData.value.player2TeamId) {
+        const player4TeamId = getPlayerTeamFromClub(formData.value.player4Id, formData.value.tournamentId)
+        if (player4TeamId !== formData.value.player2TeamId) {
+          alert('Player 4 must be from the same team as Player 2')
+          return
+        }
+      }
+    }
   }
 
   // Determine match status
@@ -1022,7 +1195,8 @@ const saveMatch = async () => {
     ...formData.value,
     date: new Date(formData.value.date),
     videoUrls: videoUrls,
-    status: status
+    status: status,
+    isDoubles: isDoublesMatch.value
   }
   
   // Remove youtubeUrl from the data we save (it's just for the form)
@@ -1059,7 +1233,7 @@ const addOpponent = async () => {
   try {
     await opponentsStore.addOpponent(newOpponent.value)
     showOpponentDialog.value = false
-    newOpponent.value = { name: '', playingStyle: '', club: '' }
+    newOpponent.value = { name: '', club: '' }
   } catch (error) {
     console.error('Error adding opponent:', error)
   }

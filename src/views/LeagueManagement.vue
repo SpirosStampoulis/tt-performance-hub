@@ -131,6 +131,9 @@
               <v-card-title class="text-h6">
                 <v-icon class="mr-2">mdi-calendar-range</v-icon>
                 Round {{ round.round }}
+                <span v-if="round.matches.length > 0 && round.matches[0].date" class="text-body-2 text-medium-emphasis ml-2">
+                  • {{ formatDate(round.matches[0].date) }}
+                </span>
               </v-card-title>
               <v-divider></v-divider>
               <v-card-text>
@@ -142,32 +145,14 @@
                     class="mb-2"
                     style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px;"
                   >
-                    <template v-slot:prepend>
-                      <v-avatar v-if="teamMatch.photoUrl" size="50" class="mr-3">
-                        <v-img :src="teamMatch.photoUrl"></v-img>
-                      </v-avatar>
-                      <v-avatar v-else size="50" color="grey-lighten-2" class="mr-3">
-                        <v-icon>mdi-trophy</v-icon>
-                      </v-avatar>
-                    </template>
                     <v-list-item-title class="text-h6 mb-1">
                       {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
                     </v-list-item-title>
-                    <v-list-item-subtitle>
-                      <v-icon size="small" class="mr-1">mdi-calendar</v-icon>
-                      {{ formatDate(teamMatch.date) }}
-                    </v-list-item-subtitle>
                     <template v-slot:append>
                       <div class="text-right">
-                        <div class="text-h5 mb-1">
+                        <div class="text-h5">
                           {{ (teamMatch.team1Score ?? teamMatch.myTeamScore ?? 0) }}-{{ (teamMatch.team2Score ?? teamMatch.opponentTeamScore ?? 0) }}
                         </div>
-                        <v-chip 
-                          size="small" 
-                          color="primary"
-                        >
-                          {{ (teamMatch.team1Score ?? teamMatch.myTeamScore ?? 0) >= 4 ? getTeamName(teamMatch.team1Id || teamMatch.myTeamId) + ' Won' : getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) + ' Won' }}
-                        </v-chip>
                       </div>
                     </template>
                   </v-list-item>
@@ -196,6 +181,7 @@
                 <th class="text-center">P</th>
                 <th class="text-center">W</th>
                 <th class="text-center">L</th>
+                <th class="text-center">MD</th>
                 <th class="text-center">Pts</th>
               </tr>
             </thead>
@@ -210,6 +196,9 @@
                 <td class="text-center">{{ team.played }}</td>
                 <td class="text-center">{{ team.won }}</td>
                 <td class="text-center">{{ team.lost }}</td>
+                <td class="text-center" :class="team.matchDifference > 0 ? 'text-success' : team.matchDifference < 0 ? 'text-error' : ''">
+                  {{ team.matchDifference > 0 ? '+' : '' }}{{ team.matchDifference }}
+                </td>
                 <td class="text-center"><strong>{{ team.points }}</strong></td>
               </tr>
             </tbody>
@@ -285,35 +274,43 @@
                   <div v-if="getTeamMatchIndividualMatches(selectedTeamMatch).length === 0" class="text-center text-medium-emphasis py-2">
                     No individual matches found
                   </div>
-                  <v-list density="compact" v-else>
-                    <v-list-item
-                      v-for="(match, index) in getTeamMatchIndividualMatches(selectedTeamMatch)"
-                      :key="match.id"
-                      class="px-0"
-                    >
-                      <v-list-item-title class="text-body-2">
-                        <v-row align="center" no-gutters>
-                          <v-col cols="auto" class="mr-2">
-                            <v-chip size="x-small" color="primary" variant="flat">{{ index + 1 }}</v-chip>
-                          </v-col>
-                          <v-col>
-                            <span :class="getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
-                              {{ getPlayerName(match.player1Id) }}
-                            </span>
-                            <span class="mx-2">vs</span>
-                            <span :class="getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)">
-                              {{ getPlayerName(match.player2Id) }}
-                            </span>
-                          </v-col>
-                          <v-col cols="auto" class="ml-2">
-                            <v-chip size="x-small" :color="getMatchWinnerChipColor(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
-                              {{ getMatchScore(match) }}
-                            </v-chip>
-                          </v-col>
-                        </v-row>
-                      </v-list-item-title>
-                    </v-list-item>
-                  </v-list>
+                  <v-table density="compact" v-else>
+                    <thead>
+                      <tr>
+                        <th class="text-left" style="width: 50px;">#</th>
+                        <th class="text-left">Match</th>
+                        <th class="text-center">Score</th>
+                        <th class="text-center">Team Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="(match, index) in getTeamMatchIndividualMatches(selectedTeamMatch)"
+                        :key="match.id"
+                      >
+                        <td>
+                          <v-chip size="x-small" color="primary" variant="flat">{{ index + 1 }}</v-chip>
+                        </td>
+                        <td>
+                          <span :class="getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
+                            {{ getPlayerName(match.player1Id) }}
+                          </span>
+                          <span class="mx-2">vs</span>
+                          <span :class="getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)">
+                            {{ getPlayerName(match.player2Id) }}
+                          </span>
+                        </td>
+                        <td class="text-center">
+                          <v-chip size="x-small" :color="getMatchWinnerChipColor(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
+                            {{ getMatchScore(match) }}
+                          </v-chip>
+                        </td>
+                        <td class="text-center">
+                          <strong>{{ getProgressiveScore(selectedTeamMatch, index) }}</strong>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
                 </v-card-text>
               </v-card>
               
@@ -356,7 +353,7 @@
                 </v-card-text>
               </v-card>
               
-              <div v-if="selectedTeamMatch.notes" class="mt-4">
+              <div v-if="selectedTeamMatch.notes && selectedTeamMatch.notes !== 'Auto-calculated from individual matches'" class="mt-4">
                 <div class="text-subtitle-1 mb-2">Notes</div>
                 <p style="white-space: pre-wrap">{{ selectedTeamMatch.notes }}</p>
               </div>
@@ -767,7 +764,9 @@ const standings = computed(() => {
       played: 0,
       won: 0,
       lost: 0,
-      points: 0
+      points: 0,
+      matchesWon: 0,
+      matchesLost: 0
     }
   })
   
@@ -779,6 +778,8 @@ const standings = computed(() => {
     
     if (teamStats[team1Id]) {
       teamStats[team1Id].played++
+      teamStats[team1Id].matchesWon += team1Score
+      teamStats[team1Id].matchesLost += team2Score
       if (team1Score >= 4) {
         teamStats[team1Id].won++
         teamStats[team1Id].points += 3
@@ -789,6 +790,8 @@ const standings = computed(() => {
     
     if (teamStats[team2Id]) {
       teamStats[team2Id].played++
+      teamStats[team2Id].matchesWon += team2Score
+      teamStats[team2Id].matchesLost += team1Score
       if (team2Score >= 4) {
         teamStats[team2Id].won++
         teamStats[team2Id].points += 3
@@ -798,7 +801,16 @@ const standings = computed(() => {
     }
   })
   
-  return Object.values(teamStats).sort((a, b) => b.points - a.points)
+  return Object.values(teamStats).map(team => ({
+    ...team,
+    matchDifference: team.matchesWon - team.matchesLost
+  })).sort((a, b) => {
+    // Sort by points first, then by match difference
+    if (b.points !== a.points) {
+      return b.points - a.points
+    }
+    return b.matchDifference - a.matchDifference
+  })
 })
 
 
@@ -849,12 +861,19 @@ const getTeamMatchIndividualMatches = (teamMatch) => {
   const team2Id = teamMatch.team2Id || teamMatch.opponentTeamId
   const round = String(teamMatch.round || '')
   
-  return matchesStore.matches.filter(match => 
+  const matches = matchesStore.matches.filter(match => 
     match.tournamentId === selectedTournament.value &&
     String(match.round) === round &&
     ((match.player1TeamId === team1Id && match.player2TeamId === team2Id) ||
      (match.player1TeamId === team2Id && match.player2TeamId === team1Id))
   )
+  
+  // Sort by creation date to maintain the order they were created
+  return matches.sort((a, b) => {
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (a.createdAt instanceof Date ? a.createdAt : new Date(a.date || 0))
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : (b.createdAt instanceof Date ? b.createdAt : new Date(b.date || 0))
+    return dateA - dateB
+  })
 }
 
 const getMatchScore = (match) => {
@@ -912,6 +931,29 @@ const getMatchWinnerChipColor = (match, teamId) => {
   const won = getMatchWinner(match, teamId)
   if (won === null) return 'default'
   return won ? 'success' : 'error'
+}
+
+const getProgressiveScore = (teamMatch, matchIndex) => {
+  const team1Id = teamMatch.team1Id || teamMatch.myTeamId
+  const team2Id = teamMatch.team2Id || teamMatch.opponentTeamId
+  const individualMatches = getTeamMatchIndividualMatches(teamMatch)
+  
+  let team1Score = 0
+  let team2Score = 0
+  
+  // Calculate progressive score up to the current match index
+  for (let i = 0; i <= matchIndex && i < individualMatches.length; i++) {
+    const match = individualMatches[i]
+    const winner = getMatchWinner(match, team1Id)
+    
+    if (winner === true) {
+      team1Score++
+    } else if (winner === false) {
+      team2Score++
+    }
+  }
+  
+  return `${team1Score}-${team2Score}`
 }
 
 const viewTeamMatches = (team) => {
@@ -1327,7 +1369,7 @@ const calculateTeamMatches = async () => {
               team1Score: team1Score,
               team2Score: team2Score,
               date: matchDate,
-              notes: 'Auto-calculated from individual matches',
+              notes: null,
               photoUrl: null
             })
             console.log(`✓ Created new team match for Round ${roundStr}, ${team1Id} vs ${team2Id}: ${team1Score}-${team2Score}`)
@@ -1338,6 +1380,51 @@ const calculateTeamMatches = async () => {
       }
     }
 
+    await teamMatchesStore.fetchTeamMatches()
+    
+    // Clean up orphaned team matches (e.g., when matches are moved to different rounds)
+    console.log('\n=== Cleaning up orphaned team matches ===')
+    const tournamentTeamMatches = teamMatchesStore.teamMatches.filter(
+      tm => tm.tournamentId === selectedTournament.value
+    )
+    
+    for (const teamMatch of tournamentTeamMatches) {
+      const teamMatchRound = String(teamMatch.round || '')
+      const team1Id = teamMatch.team1Id || teamMatch.myTeamId
+      const team2Id = teamMatch.team2Id || teamMatch.opponentTeamId
+      
+      if (!team1Id || !team2Id) {
+        console.log(`Skipping team match ${teamMatch.id} - missing team IDs`)
+        continue
+      }
+      
+      // Check if there are still 6 matches for this team pair in this round
+      const matchesForThisRoundAndPair = tournamentMatches.filter(m => {
+        const matchRound = String(m.round || '')
+        const matchTeam1Id = m.player1TeamId
+        const matchTeam2Id = m.player2TeamId
+        
+        const isSameRound = matchRound === teamMatchRound
+        const isSamePair = (matchTeam1Id === team1Id && matchTeam2Id === team2Id) ||
+                          (matchTeam1Id === team2Id && matchTeam2Id === team1Id)
+        
+        return isSameRound && isSamePair && matchTeam1Id && matchTeam2Id
+      })
+      
+      if (matchesForThisRoundAndPair.length < 6) {
+        console.log(`✗ Deleting orphaned team match ${teamMatch.id}: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - only ${matchesForThisRoundAndPair.length} matches found (need 6)`)
+        try {
+          await teamMatchesStore.deleteTeamMatch(teamMatch.id)
+          console.log(`  ✓ Deleted team match ${teamMatch.id}`)
+        } catch (error) {
+          console.error(`  ✗ Error deleting team match ${teamMatch.id}:`, error)
+        }
+      } else {
+        console.log(`✓ Team match ${teamMatch.id} is valid: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - ${matchesForThisRoundAndPair.length} matches`)
+      }
+    }
+    
+    // Refresh team matches after cleanup
     await teamMatchesStore.fetchTeamMatches()
     
     const finalTeamMatches = teamMatchesStore.teamMatches.filter(

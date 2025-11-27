@@ -17,9 +17,6 @@
               <span v-else class="text-h3">{{ getInitials(opponent.name) }}</span>
             </v-avatar>
             <div class="text-h4">{{ opponent.name }}</div>
-            <v-chip :color="getStyleColor(opponent.playingStyle)" class="mt-2">
-              {{ opponent.playingStyle }}
-            </v-chip>
             <div class="text-subtitle-1 mt-4">{{ opponent.club || 'No team' }}</div>
             
             <v-divider class="my-4"></v-divider>
@@ -406,14 +403,6 @@ const getInitials = (name) => {
     .slice(0, 2)
 }
 
-const getStyleColor = (style) => {
-  const colors = {
-    Aggressive: 'error',
-    Defensive: 'success',
-    Mixed: 'info'
-  }
-  return colors[style] || 'grey'
-}
 
 const getMatchResult = (match) => {
   const playerId = route.params.id

@@ -1,28 +1,5 @@
 <template>
   <v-container>
-    <v-row class="mb-4">
-      <v-col cols="12" md="4">
-        <v-select
-          v-model="selectedTournament"
-          :items="allTournaments"
-          item-title="displayName"
-          item-value="id"
-          label="Filter by Tournament/League"
-          variant="outlined"
-          density="comfortable"
-          clearable
-          prepend-inner-icon="mdi-filter"
-        >
-          <template v-slot:item="{ props, item }">
-            <v-list-item v-bind="props" :title="null">
-              <v-list-item-title>{{ item.raw.displayName }}</v-list-item-title>
-              <v-list-item-subtitle>{{ item.raw.type }}</v-list-item-subtitle>
-            </v-list-item>
-          </template>
-        </v-select>
-      </v-col>
-    </v-row>
-    
     <v-row>
       <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card stat-card-1" elevation="4">
@@ -41,11 +18,11 @@
         <v-card class="stat-card stat-card-2" elevation="4">
           <v-card-text class="pa-6 stat-card-content">
             <div class="d-flex align-center mb-3">
-              <v-icon size="32" color="white" class="mr-3">mdi-chart-line</v-icon>
-              <div class="text-h6 text-white font-weight-bold">Win Rate</div>
+              <v-icon size="32" color="white" class="mr-3">mdi-target</v-icon>
+              <div class="text-h6 text-white font-weight-bold">Total Points</div>
             </div>
-            <div class="text-h2 text-white font-weight-bold mb-1">{{ dashboardStats.winPercentage }}%</div>
-            <div class="text-caption text-white text-opacity-90">{{ dashboardStats.wins }}W - {{ dashboardStats.losses }}L</div>
+            <div class="text-h2 text-white font-weight-bold mb-1">{{ totalPointsScored }}</div>
+            <div class="text-caption text-white text-opacity-90">All time points</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -54,11 +31,11 @@
         <v-card class="stat-card stat-card-3" elevation="4">
           <v-card-text class="pa-6 stat-card-content">
             <div class="d-flex align-center mb-3">
-              <v-icon size="32" color="white" class="mr-3">mdi-chart-pie</v-icon>
-              <div class="text-h6 text-white font-weight-bold">Sets Won %</div>
+              <v-icon size="32" color="white" class="mr-3">mdi-tournament</v-icon>
+              <div class="text-h6 text-white font-weight-bold">Total Tournaments</div>
             </div>
-            <div class="text-h2 text-white font-weight-bold mb-1">{{ matchesStore.advancedStats.setsWonPercentage }}%</div>
-            <div class="text-caption text-white text-opacity-90">{{ matchesStore.advancedStats.totalSetsWon }}W - {{ matchesStore.advancedStats.totalSetsLost }}L</div>
+            <div class="text-h2 text-white font-weight-bold mb-1">{{ totalTournaments }}</div>
+            <div class="text-caption text-white text-opacity-90">Active competitions</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -71,7 +48,135 @@
               <div class="text-h6 text-white font-weight-bold">Players Tracked</div>
             </div>
             <div class="text-h2 text-white font-weight-bold mb-1">{{ opponentsStore.opponents.length }}</div>
-            <div class="text-caption text-white text-opacity-90">Total opponents</div>
+            <div class="text-caption text-white text-opacity-90">Total players</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <v-row v-if="playerStats">
+      <v-col cols="12">
+        <v-card class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="primary">mdi-account</v-icon>
+            <span class="font-weight-bold">{{ PLAYER_NAME }} - Player Statistics</span>
+          </v-card-title>
+          <v-divider class="mx-4"></v-divider>
+          <v-card-text>
+            <v-row>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-primary">{{ playerStats.totalMatches }}</div>
+                  <div class="text-caption text-medium-emphasis">Total Matches</div>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-success">{{ playerStats.winPercentage }}%</div>
+                  <div class="text-caption text-medium-emphasis">{{ playerStats.wins }}W - {{ playerStats.losses }}L</div>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-info">{{ playerStats.setsWonPercentage }}%</div>
+                  <div class="text-caption text-medium-emphasis">{{ playerStats.totalSetsWon }}W - {{ playerStats.totalSetsLost }}L Sets</div>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-warning">{{ playerStats.totalPointsWon }}-{{ playerStats.totalPointsLost }}</div>
+                  <div class="text-caption text-medium-emphasis">Total Points</div>
+                </div>
+              </v-col>
+            </v-row>
+            <v-divider class="my-4"></v-divider>
+            <div v-if="playerStatsByTournament.length > 0">
+              <div class="text-h6 font-weight-bold mb-3">Statistics by Tournament</div>
+              <v-row>
+                <v-col 
+                  v-for="tournament in playerStatsByTournament" 
+                  :key="tournament.name"
+                  cols="12" sm="6" md="4"
+                >
+                  <v-card variant="outlined" class="pa-3">
+                    <div class="text-subtitle-1 font-weight-bold mb-2">{{ tournament.name }}</div>
+                    <div class="d-flex justify-space-between mb-1">
+                      <span class="text-caption text-medium-emphasis">Record:</span>
+                      <span class="text-caption font-weight-bold">{{ tournament.wins }}W - {{ tournament.losses }}L</span>
+                    </div>
+                    <div class="d-flex justify-space-between">
+                      <span class="text-caption text-medium-emphasis">Sets:</span>
+                      <span class="text-caption font-weight-bold">{{ tournament.totalSetsWon }}W - {{ tournament.totalSetsLost }}L</span>
+                    </div>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <v-row v-if="teamStats">
+      <v-col cols="12">
+        <v-card class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="secondary">mdi-shield-account</v-icon>
+            <span class="font-weight-bold">{{ TEAM_NAME }} - Team Statistics</span>
+          </v-card-title>
+          <v-divider class="mx-4"></v-divider>
+          <v-card-text>
+            <v-row>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-primary">{{ teamStats.totalMatches }}</div>
+                  <div class="text-caption text-medium-emphasis">Total Matches</div>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-success">{{ teamStats.winPercentage }}%</div>
+                  <div class="text-caption text-medium-emphasis">{{ teamStats.wins }}W - {{ teamStats.losses }}L</div>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold" :class="teamStats.matchDifference > 0 ? 'text-success' : teamStats.matchDifference < 0 ? 'text-error' : ''">
+                    {{ teamStats.matchDifference > 0 ? '+' : '' }}{{ teamStats.matchDifference }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">Match Difference</div>
+                </div>
+              </v-col>
+              <v-col cols="6" sm="3">
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-info">{{ teamStats.totalMatchesWon }}-{{ teamStats.totalMatchesLost }}</div>
+                  <div class="text-caption text-medium-emphasis">Total Match Points</div>
+                </div>
+              </v-col>
+            </v-row>
+            <v-divider class="my-4"></v-divider>
+            <div v-if="teamStatsByTournament.length > 0">
+              <div class="text-h6 font-weight-bold mb-3">Statistics by Tournament</div>
+              <v-row>
+                <v-col 
+                  v-for="tournament in teamStatsByTournament" 
+                  :key="tournament.name"
+                  cols="12" sm="6" md="4"
+                >
+                  <v-card variant="outlined" class="pa-3">
+                    <div class="text-subtitle-1 font-weight-bold mb-2">{{ tournament.name }}</div>
+                    <div class="d-flex justify-space-between mb-1">
+                      <span class="text-caption text-medium-emphasis">Record:</span>
+                      <span class="text-caption font-weight-bold">{{ tournament.wins }}W - {{ tournament.losses }}L</span>
+                    </div>
+                    <div class="d-flex justify-space-between">
+                      <span class="text-caption text-medium-emphasis">Match Points:</span>
+                      <span class="text-caption font-weight-bold">{{ tournament.totalMatchesWon }}-{{ tournament.totalMatchesLost }}</span>
+                    </div>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -300,6 +405,8 @@ import { useMatchesStore } from '../stores/matches'
 import { useOpponentsStore } from '../stores/opponents'
 import { useSkillsStore } from '../stores/skills'
 import { useTournamentsStore } from '../stores/tournaments'
+import { useTeamsStore } from '../stores/teams'
+import { useTeamMatchesStore } from '../stores/teamMatches'
 import { formatDateShort } from '../utils/date'
 import WinRateChart from '../components/dashboard/WinRateChart.vue'
 import DivisionChart from '../components/dashboard/DivisionChart.vue'
@@ -311,24 +418,15 @@ const matchesStore = useMatchesStore()
 const opponentsStore = useOpponentsStore()
 const skillsStore = useSkillsStore()
 const tournamentsStore = useTournamentsStore()
+const teamsStore = useTeamsStore()
+const teamMatchesStore = useTeamMatchesStore()
 const showQuickActions = ref(false)
-const selectedTournament = ref(null)
 
-const allTournaments = computed(() => {
-  return tournamentsStore.tournaments
-    .map(t => ({
-      ...t,
-      displayName: `${t.name} (${t.year})`
-    }))
-    .sort((a, b) => {
-      if (b.year !== a.year) return (b.year || 0) - (a.year || 0)
-      return a.name.localeCompare(b.name)
-    })
-})
+const PLAYER_NAME = 'Spiros Stampoulis'
+const TEAM_NAME = 'Topspin TTA Skelton'
 
 const filteredMatches = computed(() => {
-  if (!selectedTournament.value) return matchesStore.matches
-  return matchesStore.matches.filter(m => m.tournamentId === selectedTournament.value)
+  return matchesStore.matches
 })
 
 const dashboardStats = computed(() => {
@@ -371,12 +469,37 @@ const dashboardStats = computed(() => {
   }
 })
 
+const totalPointsScored = computed(() => {
+  const matches = filteredMatches.value.filter(m => m.scores && m.scores.length > 0)
+  let totalPoints = 0
+  
+  matches.forEach(match => {
+    match.scores?.forEach(score => {
+      totalPoints += (score.myScore || score.player1Score || 0)
+    })
+  })
+  
+  return totalPoints
+})
+
+const totalTournaments = computed(() => {
+  const uniqueTournaments = new Set()
+  filteredMatches.value.forEach(match => {
+    if (match.tournamentId) {
+      uniqueTournaments.add(match.tournamentId)
+    }
+  })
+  return uniqueTournaments.size
+})
+
 onMounted(async () => {
   await Promise.all([
     matchesStore.fetchMatches(),
     opponentsStore.fetchOpponents(),
     skillsStore.fetchSkills(),
-    tournamentsStore.fetchTournaments()
+    tournamentsStore.fetchTournaments(),
+    teamsStore.fetchTeams(),
+    teamMatchesStore.fetchTeamMatches()
   ])
 })
 
@@ -428,6 +551,199 @@ const getPlayerName = (playerId) => {
   const player = opponentsStore.opponents.find(o => o.id === playerId)
   return player ? player.name : 'Unknown'
 }
+
+const playerStats = computed(() => {
+  const player = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
+  if (!player) return null
+  
+  const playerMatches = matchesStore.matches.filter(m => {
+    if (!m.scores || m.scores.length === 0) return false
+    return m.player1Id === player.id || m.player2Id === player.id || m.opponentId === player.id
+  })
+  
+  let wins = 0
+  let losses = 0
+  let totalSetsWon = 0
+  let totalSetsLost = 0
+  let totalPointsWon = 0
+  let totalPointsLost = 0
+  
+  playerMatches.forEach(match => {
+    const isPlayer1 = match.player1Id === player.id || match.opponentId === player.id
+    
+    let playerSets = 0
+    let opponentSets = 0
+    
+    match.scores?.forEach(score => {
+      const pScore = isPlayer1 ? (score.player1Score ?? score.myScore ?? 0) : (score.player2Score ?? score.oppScore ?? 0)
+      const oScore = isPlayer1 ? (score.player2Score ?? score.oppScore ?? 0) : (score.player1Score ?? score.myScore ?? 0)
+      
+      totalPointsWon += pScore
+      totalPointsLost += oScore
+      
+      if (pScore > oScore) {
+        playerSets++
+        totalSetsWon++
+      } else if (oScore > pScore) {
+        opponentSets++
+        totalSetsLost++
+      }
+    })
+    
+    if (playerSets > opponentSets) wins++
+    else if (opponentSets > playerSets) losses++
+  })
+  
+  const winPercentage = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : 0
+  const setsWonPercentage = (totalSetsWon + totalSetsLost) > 0 ? 
+    ((totalSetsWon / (totalSetsWon + totalSetsLost)) * 100).toFixed(1) : 0
+  
+  return {
+    totalMatches: playerMatches.length,
+    wins,
+    losses,
+    winPercentage,
+    totalSetsWon,
+    totalSetsLost,
+    setsWonPercentage,
+    totalPointsWon,
+    totalPointsLost
+  }
+})
+
+const playerStatsByTournament = computed(() => {
+  const player = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
+  if (!player) return []
+  
+  const tournamentStats = {}
+  
+  matchesStore.matches.forEach(match => {
+    if (!match.scores || match.scores.length === 0) return
+    if (match.player1Id !== player.id && match.player2Id !== player.id && match.opponentId !== player.id) return
+    
+    const tournament = tournamentsStore.tournaments.find(t => t.id === match.tournamentId)
+    const tournamentName = tournament ? tournament.name : 'Unknown'
+    
+    if (!tournamentStats[tournamentName]) {
+      tournamentStats[tournamentName] = {
+        name: tournamentName,
+        wins: 0,
+        losses: 0,
+        totalSetsWon: 0,
+        totalSetsLost: 0
+      }
+    }
+    
+    const isPlayer1 = match.player1Id === player.id || match.opponentId === player.id
+    let playerSets = 0
+    let opponentSets = 0
+    
+    match.scores?.forEach(score => {
+      const pScore = isPlayer1 ? (score.player1Score ?? score.myScore ?? 0) : (score.player2Score ?? score.oppScore ?? 0)
+      const oScore = isPlayer1 ? (score.player2Score ?? score.oppScore ?? 0) : (score.player1Score ?? score.myScore ?? 0)
+      
+      if (pScore > oScore) {
+        playerSets++
+        tournamentStats[tournamentName].totalSetsWon++
+      } else if (oScore > pScore) {
+        opponentSets++
+        tournamentStats[tournamentName].totalSetsLost++
+      }
+    })
+    
+    if (playerSets > opponentSets) tournamentStats[tournamentName].wins++
+    else if (opponentSets > playerSets) tournamentStats[tournamentName].losses++
+  })
+  
+  return Object.values(tournamentStats)
+})
+
+const teamStats = computed(() => {
+  const team = teamsStore.teams.find(t => t.name === TEAM_NAME)
+  if (!team) return null
+  
+  const teamMatches = teamMatchesStore.teamMatches.filter(tm => {
+    const team1Id = tm.team1Id || tm.myTeamId
+    const team2Id = tm.team2Id || tm.opponentTeamId
+    return team1Id === team.id || team2Id === team.id
+  })
+  
+  let wins = 0
+  let losses = 0
+  let totalMatchesWon = 0
+  let totalMatchesLost = 0
+  
+  teamMatches.forEach(tm => {
+    const team1Id = tm.team1Id || tm.myTeamId
+    const team2Id = tm.team2Id || tm.opponentTeamId
+    const team1Score = tm.team1Score ?? tm.myTeamScore ?? 0
+    const team2Score = tm.team2Score ?? tm.opponentTeamScore ?? 0
+    
+    const isTeam1 = team1Id === team.id
+    const teamScore = isTeam1 ? team1Score : team2Score
+    const opponentScore = isTeam1 ? team2Score : team1Score
+    
+    totalMatchesWon += teamScore
+    totalMatchesLost += opponentScore
+    
+    if (teamScore >= 4) wins++
+    else if (opponentScore >= 4) losses++
+  })
+  
+  const winPercentage = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : 0
+  const matchDifference = totalMatchesWon - totalMatchesLost
+  
+  return {
+    totalMatches: teamMatches.length,
+    wins,
+    losses,
+    winPercentage,
+    totalMatchesWon,
+    totalMatchesLost,
+    matchDifference
+  }
+})
+
+const teamStatsByTournament = computed(() => {
+  const team = teamsStore.teams.find(t => t.name === TEAM_NAME)
+  if (!team) return []
+  
+  const tournamentStats = {}
+  
+  teamMatchesStore.teamMatches.forEach(tm => {
+    const team1Id = tm.team1Id || tm.myTeamId
+    const team2Id = tm.team2Id || tm.opponentTeamId
+    if (team1Id !== team.id && team2Id !== team.id) return
+    
+    const tournament = tournamentsStore.tournaments.find(t => t.id === tm.tournamentId)
+    const tournamentName = tournament ? tournament.name : 'Unknown'
+    
+    if (!tournamentStats[tournamentName]) {
+      tournamentStats[tournamentName] = {
+        name: tournamentName,
+        wins: 0,
+        losses: 0,
+        totalMatchesWon: 0,
+        totalMatchesLost: 0
+      }
+    }
+    
+    const team1Score = tm.team1Score ?? tm.myTeamScore ?? 0
+    const team2Score = tm.team2Score ?? tm.opponentTeamScore ?? 0
+    
+    const isTeam1 = team1Id === team.id
+    const teamScore = isTeam1 ? team1Score : team2Score
+    const opponentScore = isTeam1 ? team2Score : team1Score
+    
+    tournamentStats[tournamentName].totalMatchesWon += teamScore
+    tournamentStats[tournamentName].totalMatchesLost += opponentScore
+    
+    if (teamScore >= 4) tournamentStats[tournamentName].wins++
+    else if (opponentScore >= 4) tournamentStats[tournamentName].losses++
+  })
+  
+  return Object.values(tournamentStats)
+})
 
 const goToMatches = () => {
   showQuickActions.value = false

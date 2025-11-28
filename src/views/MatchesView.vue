@@ -102,6 +102,13 @@
                       Match TBD
                     </span>
                   </div>
+                  <router-link
+                    v-if="match.videoUrls && match.videoUrls.length > 0"
+                    :to="`/matches/${match.id}`"
+                    class="ml-2 youtube-badge"
+                  >
+                    <v-icon size="small" class="youtube-icon" color="red">mdi-youtube</v-icon>
+                  </router-link>
                   <div
                     v-if="isScheduled(match)"
                     class="ml-2 scheduled-badge"
@@ -1803,6 +1810,34 @@ const getTeamName = (teamId) => {
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   letter-spacing: 0.3px;
+}
+
+.youtube-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #FF0000;
+  border-radius: 6px;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 0, 0, 0.2);
+  text-decoration: none;
+}
+
+.youtube-badge:hover {
+  background: #FF0000;
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(255, 0, 0, 0.4);
+}
+
+.youtube-badge:hover .youtube-icon {
+  color: white !important;
+}
+
+.youtube-icon {
+  transition: color 0.2s ease;
 }
 
 .upcoming-badge {

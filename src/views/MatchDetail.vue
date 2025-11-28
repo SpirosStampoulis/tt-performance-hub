@@ -9,33 +9,42 @@
     </v-row>
 
     <v-row>
-      <v-col cols="12" md="8">
-        <v-card class="mb-4">
-          <v-card-title>
-            {{ getMatchResult }}
-          </v-card-title>
-          <v-card-text>
-            <div class="text-h4 mb-2">{{ getPlayer1Name }} vs {{ getPlayer2Name }}</div>
-            <div class="text-h5 mb-4">{{ getScoreSummary }}</div>
-            <v-chip v-if="getTournamentName" class="mr-2">
-              <v-icon start>mdi-tournament</v-icon>
-              {{ getTournamentName }}
-            </v-chip>
-            <v-chip v-if="match.round" class="mr-2">
-              {{ match.round }}
-            </v-chip>
-            <div v-if="match.player1TeamId || match.player2TeamId" class="mt-2">
-              <v-chip size="small" class="mr-1">
-                <v-icon start size="small">mdi-shield-account</v-icon>
-                {{ getTeamName(match.player1TeamId) }}
+      <v-col cols="12">
+        <v-card class="mb-4 match-header-card">
+          <v-card-title class="match-header-title">
+            <div class="d-flex align-center flex-wrap gap-2">
+              <v-chip v-if="getTournamentName" size="small" variant="outlined">
+                <v-icon start size="small">mdi-tournament</v-icon>
+                {{ getTournamentName }}
               </v-chip>
-              vs
-              <v-chip size="small" class="ml-1">
-                <v-icon start size="small">mdi-shield-account</v-icon>
-                {{ getTeamName(match.player2TeamId) }}
+              <v-chip v-if="match.round" size="small" variant="outlined">
+                Round {{ match.round }}
               </v-chip>
             </div>
-            <div class="text-subtitle-1 mt-4">{{ formatDate(match.date) }}</div>
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text>
+            <div class="match-players-section">
+              <div class="text-h4 font-weight-bold mb-2">{{ getPlayer1Name }} vs {{ getPlayer2Name }}</div>
+              <div v-if="match.player1TeamId || match.player2TeamId" class="mb-3">
+                <v-chip size="small" class="mr-1">
+                  <v-icon start size="small">mdi-shield-account</v-icon>
+                  {{ getTeamName(match.player1TeamId) }}
+                </v-chip>
+                <span class="mx-2">vs</span>
+                <v-chip size="small" class="ml-1">
+                  <v-icon start size="small">mdi-shield-account</v-icon>
+                  {{ getTeamName(match.player2TeamId) }}
+                </v-chip>
+              </div>
+              <div class="match-score-display">
+                <div class="text-h3 font-weight-bold text-primary">{{ getSetsScore }}</div>
+                <div class="text-subtitle-1 text-medium-emphasis mt-2">
+                  <v-icon size="small" class="mr-1">mdi-calendar</v-icon>
+                  {{ formatDate(match.date) }}
+                </div>
+              </div>
+            </div>
           </v-card-text>
         </v-card>
 
@@ -46,19 +55,19 @@
               <thead>
                 <tr>
                   <th>Set</th>
-                  <th>Player 1</th>
-                  <th>Player 2</th>
+                  <th>{{ getPlayer1Name }}</th>
+                  <th>{{ getPlayer2Name }}</th>
                   <th>Winner</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="score in match.scores" :key="score.set">
-                  <td>{{ score.set }}</td>
+                <tr v-for="(score, index) in match.scores" :key="index">
+                  <td>{{ index + 1 }}</td>
                   <td>{{ score.player1Score || score.myScore || 0 }}</td>
                   <td>{{ score.player2Score || score.oppScore || 0 }}</td>
                   <td>
                     <v-chip :color="(score.player1Score || score.myScore || 0) > (score.player2Score || score.oppScore || 0) ? 'success' : 'error'" size="small">
-                      {{ (score.player1Score || score.myScore || 0) > (score.player2Score || score.oppScore || 0) ? 'Player 1' : 'Player 2' }}
+                      {{ (score.player1Score || score.myScore || 0) > (score.player2Score || score.oppScore || 0) ? getPlayer1Name : getPlayer2Name }}
                     </v-chip>
                   </td>
                 </tr>
@@ -93,40 +102,6 @@
           </v-card-text>
         </v-card>
 
-        <v-card class="mb-4">
-          <v-card-title>
-            Photos
-            <v-spacer></v-spacer>
-            <v-btn prepend-icon="mdi-camera" size="small" @click="$refs.photoInput.click()">
-              Add Photos
-            </v-btn>
-            <input
-              ref="photoInput"
-              type="file"
-              accept="image/*"
-              multiple
-              style="display: none"
-              @change="handlePhotoUpload"
-            />
-          </v-card-title>
-          <v-card-text>
-            <v-row v-if="match.photos && match.photos.length > 0">
-              <v-col v-for="(photo, index) in match.photos" :key="index" cols="6" md="4">
-                <v-card>
-                  <v-img :src="photo" aspect-ratio="1" cover @click="openGallery(index)"></v-img>
-                  <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn icon="mdi-delete" size="small" @click="deletePhoto(index)"></v-btn>
-                  </v-card-actions>
-                </v-card>
-              </v-col>
-            </v-row>
-            <div v-else class="text-center text-medium-emphasis py-4">
-              No photos added yet
-            </div>
-          </v-card-text>
-        </v-card>
-
         <v-card>
           <v-card-title>
             Videos
@@ -154,24 +129,6 @@
             <div v-else class="text-center text-medium-emphasis py-4">
               No videos added yet
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="4">
-        <v-card>
-          <v-card-title>Players</v-card-title>
-          <v-card-text>
-            <v-list density="compact">
-              <v-list-item>
-                <v-list-item-title>Player 1</v-list-item-title>
-                <v-list-item-subtitle>{{ getPlayer1Name }}</v-list-item-subtitle>
-              </v-list-item>
-              <v-list-item>
-                <v-list-item-title>Player 2</v-list-item-title>
-                <v-list-item-subtitle>{{ getPlayer2Name }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
           </v-card-text>
         </v-card>
       </v-col>
@@ -221,30 +178,6 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="galleryDialog" fullscreen>
-      <v-card>
-        <v-toolbar class="dialog-header">
-          <v-toolbar-title>Photo Gallery</v-toolbar-title>
-          <v-btn 
-            icon="mdi-close" 
-            variant="text"
-            size="small"
-            class="dialog-close-btn"
-            @click="galleryDialog = false"
-          ></v-btn>
-        </v-toolbar>
-        <v-card-text class="d-flex align-center justify-center" style="height: 100%">
-          <v-img v-if="match.photos && match.photos[galleryIndex]" :src="match.photos[galleryIndex]" contain max-height="90vh"></v-img>
-        </v-card-text>
-        <v-card-actions>
-          <v-btn icon="mdi-chevron-left" @click="prevPhoto" :disabled="galleryIndex === 0"></v-btn>
-          <v-spacer></v-spacer>
-          <div>{{ galleryIndex + 1 }} / {{ match.photos?.length || 0 }}</div>
-          <v-spacer></v-spacer>
-          <v-btn icon="mdi-chevron-right" @click="nextPhoto" :disabled="galleryIndex === (match.photos?.length || 0) - 1"></v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
@@ -256,7 +189,7 @@ import { useOpponentsStore } from '../stores/opponents'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useTeamsStore } from '../stores/teams'
 import { formatDate } from '../utils/date'
-import { uploadMultipleImages, getYouTubeEmbedUrl } from '../utils/storage'
+import { getYouTubeEmbedUrl } from '../utils/storage'
 
 const route = useRoute()
 const matchesStore = useMatchesStore()
@@ -267,10 +200,7 @@ const teamsStore = useTeamsStore()
 const match = ref(null)
 const showVideoDialog = ref(false)
 const editServeStats = ref(false)
-const galleryDialog = ref(false)
-const galleryIndex = ref(0)
 const newVideoUrl = ref('')
-const uploading = ref(false)
 
 const serveStatsForm = ref({
   successRate: 0,
@@ -302,11 +232,22 @@ const getMatchResult = computed(() => {
   return player1Total > player2Total ? 'Player 1 Win' : 'Player 2 Win'
 })
 
-const getScoreSummary = computed(() => {
-  if (!match.value) return ''
-  const player1Total = match.value.scores.reduce((sum, s) => sum + (s.player1Score || s.myScore || 0), 0)
-  const player2Total = match.value.scores.reduce((sum, s) => sum + (s.player2Score || s.oppScore || 0), 0)
-  return `${player1Total}-${player2Total}`
+const getSetsScore = computed(() => {
+  if (!match.value || !match.value.scores) return '0-0'
+  let player1Sets = 0
+  let player2Sets = 0
+  
+  match.value.scores.forEach(score => {
+    const p1Score = score.player1Score || score.myScore || 0
+    const p2Score = score.player2Score || score.oppScore || 0
+    if (p1Score > p2Score) {
+      player1Sets++
+    } else if (p2Score > p1Score) {
+      player2Sets++
+    }
+  })
+  
+  return `${player1Sets}-${player2Sets}`
 })
 
 const getPlayer1Name = computed(() => {
@@ -330,41 +271,6 @@ const getTournamentName = computed(() => {
 const headToHead = computed(() => {
   return { wins: 0, losses: 0, total: 0, winRate: 0 }
 })
-
-const handlePhotoUpload = async (event) => {
-  const files = Array.from(event.target.files)
-  if (files.length === 0) return
-
-  uploading.value = true
-  try {
-    const urls = await uploadMultipleImages(files, `matches/${match.value.id}`)
-    const updatedPhotos = [...(match.value.photos || []), ...urls]
-    
-    await matchesStore.updateMatch(match.value.id, {
-      ...match.value,
-      photos: updatedPhotos
-    })
-    
-    match.value = await matchesStore.getMatch(match.value.id)
-  } catch (error) {
-    console.error('Error uploading photos:', error)
-  } finally {
-    uploading.value = false
-    event.target.value = ''
-  }
-}
-
-const deletePhoto = async (index) => {
-  const updatedPhotos = [...match.value.photos]
-  updatedPhotos.splice(index, 1)
-  
-  await matchesStore.updateMatch(match.value.id, {
-    ...match.value,
-    photos: updatedPhotos
-  })
-  
-  match.value = await matchesStore.getMatch(match.value.id)
-}
 
 const addVideo = async () => {
   if (!newVideoUrl.value) return
@@ -403,25 +309,30 @@ const saveServeStats = async () => {
   editServeStats.value = false
 }
 
-const openGallery = (index) => {
-  galleryIndex.value = index
-  galleryDialog.value = true
-}
-
-const nextPhoto = () => {
-  if (galleryIndex.value < match.value.photos.length - 1) {
-    galleryIndex.value++
-  }
-}
-
-const prevPhoto = () => {
-  if (galleryIndex.value > 0) {
-    galleryIndex.value--
-  }
-}
 </script>
 
 <style scoped>
+.match-header-card {
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.05) 0%, rgba(255, 215, 0, 0.05) 100%);
+  border: 2px solid rgba(220, 20, 60, 0.2);
+}
+
+.match-header-title {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%);
+}
+
+.match-players-section {
+  padding: 8px 0;
+}
+
+.match-score-display {
+  text-align: center;
+  padding: 16px 0;
+  margin-top: 16px;
+  border-top: 2px solid rgba(220, 20, 60, 0.2);
+}
+
 .video-container {
   position: relative;
   padding-bottom: 56.25%;

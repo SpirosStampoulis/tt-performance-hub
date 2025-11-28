@@ -291,7 +291,7 @@
 
     <v-dialog v-model="showAddTeamMatchDialog" max-width="600" persistent>
       <v-card>
-        <v-card-title>Add Team Match</v-card-title>
+        <v-card-title>{{ editingTeamMatch ? 'Edit Team Match' : 'Add Team Match' }}</v-card-title>
         <v-divider></v-divider>
         <v-card-text>
           <v-form ref="teamMatchForm">
@@ -516,6 +516,22 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
+          <v-btn 
+            v-if="isSimpleLeague" 
+            color="error" 
+            prepend-icon="mdi-delete" 
+            @click="confirmDeleteTeamMatch"
+          >
+            Delete
+          </v-btn>
+          <v-btn 
+            v-if="isSimpleLeague" 
+            color="primary" 
+            prepend-icon="mdi-pencil" 
+            @click="editTeamMatch"
+          >
+            Edit
+          </v-btn>
           <v-btn text @click="showTeamMatchDetail = false">Close</v-btn>
         </v-card-actions>
       </v-card>
@@ -529,6 +545,20 @@
           <v-spacer></v-spacer>
           <v-btn text @click="deleteTeamDialog = false">Cancel</v-btn>
           <v-btn color="error" @click="deleteTeam">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="showDeleteTeamMatchDialog" max-width="400">
+      <v-card>
+        <v-card-title>Delete Team Match</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete this team match? This action cannot be undone.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="showDeleteTeamMatchDialog = false">Cancel</v-btn>
+          <v-btn color="error" @click="deleteTeamMatch">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -668,6 +698,9 @@ const cleanupResults = ref(null)
 const showTeamMatchesDialog = ref(false)
 const selectedTeamForMatches = ref(null)
 const showAddTeamMatchDialog = ref(false)
+const editingTeamMatch = ref(null)
+const teamMatchToDelete = ref(null)
+const showDeleteTeamMatchDialog = ref(false)
 const newTeamMatch = ref({
   team1Id: '',
   team2Id: '',
@@ -1294,6 +1327,7 @@ const handleNewTeamMatchPhotoChange = (value) => {
 
 const closeAddTeamMatchDialog = () => {
   showAddTeamMatchDialog.value = false
+  editingTeamMatch.value = null
   newTeamMatch.value = {
     team1Id: '',
     team2Id: '',
@@ -1306,6 +1340,51 @@ const closeAddTeamMatchDialog = () => {
   newTeamMatchPhotoPreview.value = null
   if (teamMatchForm.value) {
     teamMatchForm.value.reset()
+  }
+}
+
+const editTeamMatch = () => {
+  if (!selectedTeamMatch.value) return
+  
+  editingTeamMatch.value = selectedTeamMatch.value
+  newTeamMatch.value = {
+    team1Id: selectedTeamMatch.value.team1Id || '',
+    team2Id: selectedTeamMatch.value.team2Id || '',
+    round: selectedTeamMatch.value.round || '',
+    date: selectedTeamMatch.value.date 
+      ? (selectedTeamMatch.value.date instanceof Date 
+          ? selectedTeamMatch.value.date.toISOString().split('T')[0]
+          : (selectedTeamMatch.value.date?.toDate 
+              ? selectedTeamMatch.value.date.toDate().toISOString().split('T')[0]
+              : new Date(selectedTeamMatch.value.date).toISOString().split('T')[0]))
+      : new Date().toISOString().split('T')[0],
+    team1Score: selectedTeamMatch.value.team1Score || 0,
+    team2Score: selectedTeamMatch.value.team2Score || 0,
+    photoFile: null
+  }
+  newTeamMatchPhotoPreview.value = selectedTeamMatch.value.photoUrl || null
+  showTeamMatchDetail.value = false
+  showAddTeamMatchDialog.value = true
+}
+
+const confirmDeleteTeamMatch = () => {
+  if (!selectedTeamMatch.value) return
+  teamMatchToDelete.value = selectedTeamMatch.value
+  showDeleteTeamMatchDialog.value = true
+}
+
+const deleteTeamMatch = async () => {
+  if (!teamMatchToDelete.value) return
+  
+  try {
+    await teamMatchesStore.deleteTeamMatch(teamMatchToDelete.value.id)
+    showDeleteTeamMatchDialog.value = false
+    showTeamMatchDetail.value = false
+    teamMatchToDelete.value = null
+    await teamMatchesStore.fetchTeamMatches()
+  } catch (error) {
+    console.error('Error deleting team match:', error)
+    alert('Error deleting team match. Please try again.')
   }
 }
 
@@ -1342,15 +1421,21 @@ const saveTeamMatch = async () => {
       date: new Date(newTeamMatch.value.date),
       team1Score: newTeamMatch.value.team1Score || 0,
       team2Score: newTeamMatch.value.team2Score || 0,
-      photoUrl: photoUrl
+      photoUrl: photoUrl || (editingTeamMatch.value?.photoUrl || null)
     }
 
-    const teamMatchId = await teamMatchesStore.addTeamMatch(teamMatchData)
-    
-    // If we uploaded a photo with a temp ID, update it with the real ID
-    if (photoUrl && teamMatchId) {
-      // The photo was already uploaded with the temp path, but we can re-upload with the real ID if needed
-      // For now, we'll keep the temp path as it works fine
+    if (editingTeamMatch.value) {
+      // Update existing team match
+      await teamMatchesStore.updateTeamMatch(editingTeamMatch.value.id, teamMatchData)
+    } else {
+      // Create new team match
+      const teamMatchId = await teamMatchesStore.addTeamMatch(teamMatchData)
+      
+      // If we uploaded a photo with a temp ID, update it with the real ID
+      if (photoUrl && teamMatchId) {
+        // The photo was already uploaded with the temp path, but we can re-upload with the real ID if needed
+        // For now, we'll keep the temp path as it works fine
+      }
     }
 
     closeAddTeamMatchDialog()

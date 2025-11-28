@@ -84,7 +84,7 @@
 
             <v-select
               v-model="formData.type"
-              :items="['League', 'Tournament']"
+              :items="['League', 'Tournament', 'Simple League']"
               label="Type"
               variant="outlined"
               :rules="[v => !!v || 'Type is required']"

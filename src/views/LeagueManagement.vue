@@ -16,6 +16,15 @@
         <v-btn color="primary" prepend-icon="mdi-plus" @click="showTeamDialog = true" class="mr-2">
           Add Team
         </v-btn>
+        <v-btn 
+          v-if="isSimpleLeague" 
+          color="success" 
+          prepend-icon="mdi-account-group" 
+          @click="showAddTeamMatchDialog = true" 
+          class="mr-2"
+        >
+          Add Team Match
+        </v-btn>
         <v-btn color="secondary" prepend-icon="mdi-tournament" @click="openCreateTournamentDialog">
           Create Tournament
         </v-btn>
@@ -97,6 +106,7 @@
             Team Matches
             <v-spacer></v-spacer>
             <v-btn 
+              v-if="!isSimpleLeague"
               icon="mdi-refresh" 
               size="small" 
               variant="text"
@@ -107,6 +117,7 @@
               <v-tooltip activator="parent">Refresh team matches and standings</v-tooltip>
             </v-btn>
             <v-btn 
+              v-if="!isSimpleLeague"
               icon="mdi-broom" 
               size="small" 
               variant="text"
@@ -119,7 +130,8 @@
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text v-if="tournamentTeamMatches.length === 0" class="text-center text-medium-emphasis py-8">
-            No team matches calculated yet. Matches will be automatically calculated when 6 individual matches are added for a round.
+            <span v-if="isSimpleLeague">No team matches yet. Click "Add Team Match" to create one.</span>
+            <span v-else>No team matches calculated yet. Matches will be automatically calculated when 6 individual matches are added for a round.</span>
           </v-card-text>
           <div v-else>
             <v-card
@@ -147,6 +159,14 @@
                   >
                     <v-list-item-title class="text-h6 mb-1">
                       {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
+                      <v-icon 
+                        v-if="teamMatch.photoUrl" 
+                        size="small" 
+                        color="primary" 
+                        class="ml-2"
+                      >
+                        mdi-image
+                      </v-icon>
                     </v-list-item-title>
                     <template v-slot:append>
                       <div class="text-right">
@@ -163,7 +183,7 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="4" v-if="!isSimpleLeague">
         <v-card>
           <v-card-title>
             <v-icon class="mr-2">mdi-podium</v-icon>
@@ -221,6 +241,30 @@
           </v-list>
         </v-card>
       </v-col>
+
+      <v-col cols="12" md="4" v-if="isSimpleLeague">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-shield-account</v-icon>
+            Teams
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text v-if="tournamentTeams.length === 0" class="text-center text-medium-emphasis py-4">
+            No teams added yet. Click "Add Team" to create teams for this tournament.
+          </v-card-text>
+          <v-list v-else density="compact">
+            <v-list-item v-for="team in tournamentTeams" :key="team.id">
+              <v-list-item-title>
+                {{ team.name }}
+                <v-chip v-if="team.isMyTeam" size="x-small" color="primary" class="ml-2">My Team</v-chip>
+              </v-list-item-title>
+              <template v-slot:append>
+                <v-btn icon="mdi-delete" size="x-small" @click="confirmDeleteTeam(team)"></v-btn>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-col>
     </v-row>
 
     <v-dialog v-model="showTeamDialog" max-width="500">
@@ -245,6 +289,100 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="showAddTeamMatchDialog" max-width="600" persistent>
+      <v-card>
+        <v-card-title>Add Team Match</v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          <v-form ref="teamMatchForm">
+            <v-select
+              v-model="newTeamMatch.team1Id"
+              :items="tournamentTeams"
+              item-title="name"
+              item-value="id"
+              label="Team 1"
+              variant="outlined"
+              :rules="[v => !!v || 'Team 1 is required']"
+            ></v-select>
+
+            <v-select
+              v-model="newTeamMatch.team2Id"
+              :items="tournamentTeams"
+              item-title="name"
+              item-value="id"
+              label="Team 2"
+              variant="outlined"
+              :rules="[
+                v => !!v || 'Team 2 is required',
+                v => v !== newTeamMatch.team1Id || 'Team 2 must be different from Team 1'
+              ]"
+            ></v-select>
+
+            <v-text-field
+              v-model="newTeamMatch.round"
+              label="Round"
+              variant="outlined"
+              :rules="[v => !!v || 'Round is required']"
+            ></v-text-field>
+
+            <v-text-field
+              v-model="newTeamMatch.date"
+              label="Date"
+              type="date"
+              variant="outlined"
+              :rules="[v => !!v || 'Date is required']"
+            ></v-text-field>
+
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="newTeamMatch.team1Score"
+                  label="Team 1 Score"
+                  type="number"
+                  variant="outlined"
+                  min="0"
+                  :rules="[v => v >= 0 || 'Score must be 0 or greater']"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="newTeamMatch.team2Score"
+                  label="Team 2 Score"
+                  type="number"
+                  variant="outlined"
+                  min="0"
+                  :rules="[v => v >= 0 || 'Score must be 0 or greater']"
+                ></v-text-field>
+              </v-col>
+            </v-row>
+
+            <v-file-input
+              v-model="newTeamMatch.photoFile"
+              label="Upload Photo (Optional)"
+              variant="outlined"
+              accept="image/*"
+              prepend-icon=""
+              prepend-inner-icon="mdi-camera"
+              :clearable="true"
+              @update:model-value="handleNewTeamMatchPhotoChange"
+            ></v-file-input>
+
+            <v-img
+              v-if="newTeamMatchPhotoPreview"
+              :src="newTeamMatchPhotoPreview"
+              aspect-ratio="16/9"
+              cover
+              class="mb-2"
+            ></v-img>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="closeAddTeamMatchDialog">Cancel</v-btn>
+          <v-btn color="primary" @click="saveTeamMatch" :loading="savingTeamMatch">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-dialog v-model="showTeamMatchDetail" max-width="600">
       <v-card v-if="selectedTeamMatch">
@@ -268,7 +406,7 @@
                 Score: {{ (selectedTeamMatch.team1Score ?? selectedTeamMatch.myTeamScore ?? 0) }}-{{ (selectedTeamMatch.team2Score ?? selectedTeamMatch.opponentTeamScore ?? 0) }}
               </div>
               
-              <v-card variant="outlined" class="mb-4">
+              <v-card v-if="!isSimpleLeague" variant="outlined" class="mb-4">
                 <v-card-title class="text-subtitle-1">Individual Matches</v-card-title>
                 <v-card-text>
                   <div v-if="getTeamMatchIndividualMatches(selectedTeamMatch).length === 0" class="text-center text-medium-emphasis py-2">
@@ -410,6 +548,14 @@
               </template>
               <v-list-item-title class="text-h6 mb-1">
                 vs {{ getOpponentTeamName(teamMatch, selectedTeamForMatches.id) }}
+                <v-icon 
+                  v-if="teamMatch.photoUrl" 
+                  size="small" 
+                  color="primary" 
+                  class="ml-2"
+                >
+                  mdi-image
+                </v-icon>
               </v-list-item-title>
               <v-list-item-subtitle>
                 <v-icon size="small" class="mr-1">mdi-calendar-range</v-icon>
@@ -505,6 +651,20 @@ const cleaningUp = ref(false)
 const cleanupResults = ref(null)
 const showTeamMatchesDialog = ref(false)
 const selectedTeamForMatches = ref(null)
+const showAddTeamMatchDialog = ref(false)
+const newTeamMatch = ref({
+  team1Id: '',
+  team2Id: '',
+  round: '',
+  date: new Date().toISOString().split('T')[0],
+  team1Score: 0,
+  team2Score: 0,
+  photoFile: null
+})
+const newTeamMatchPhotoPreview = ref(null)
+const savingTeamMatch = ref(false)
+const teamMatchForm = ref(null)
+const photoPreview = ref(null)
 
 const newTeam = ref({
   name: '',
@@ -531,13 +691,18 @@ onMounted(async () => {
     }
   }
   
-  if (selectedTournament.value) {
+  // Clean up invalid team matches for Simple League tournaments
+  if (selectedTournament.value && isSimpleLeague.value) {
+    await cleanupInvalidSimpleLeagueTeamMatches()
+  }
+  
+  if (selectedTournament.value && !isSimpleLeague.value) {
     await calculateTeamMatches()
   }
   
   // Recalculate when page becomes visible (user switches back to tab)
   document.addEventListener('visibilitychange', async () => {
-    if (!document.hidden && selectedTournament.value) {
+    if (!document.hidden && selectedTournament.value && !isSimpleLeague.value) {
       console.log('Page became visible, refreshing data...')
       await Promise.all([
         matchesStore.fetchMatches(),
@@ -550,7 +715,7 @@ onMounted(async () => {
   
   // Also recalculate when window gains focus (user switches back to browser)
   window.addEventListener('focus', async () => {
-    if (selectedTournament.value) {
+    if (selectedTournament.value && !isSimpleLeague.value) {
       console.log('Window gained focus, refreshing data...')
       await Promise.all([
         matchesStore.fetchMatches(),
@@ -564,12 +729,17 @@ onMounted(async () => {
 
 watch(selectedTournament, async (newVal) => {
   if (newVal) {
-    await Promise.all([
-      matchesStore.fetchMatches(),
-      teamsStore.fetchTeams(),
-      opponentsStore.fetchOpponents()
-    ])
-    await calculateTeamMatches()
+    if (isSimpleLeague.value) {
+      // For Simple League, clean up invalid team matches
+      await cleanupInvalidSimpleLeagueTeamMatches()
+    } else {
+      await Promise.all([
+        matchesStore.fetchMatches(),
+        teamsStore.fetchTeams(),
+        opponentsStore.fetchOpponents()
+      ])
+      await calculateTeamMatches()
+    }
   }
 })
 
@@ -580,7 +750,7 @@ watch(() => teamMatchesStore.teamMatches, () => {
 }, { deep: true })
 
 watch(() => matchesStore.matches.length, async (newLength, oldLength) => {
-  if (!selectedTournament.value) return
+  if (!selectedTournament.value || isSimpleLeague.value) return
   if (newLength === oldLength) return
   
   console.log(`Match count changed: ${oldLength} → ${newLength}, triggering recalculation...`)
@@ -613,7 +783,7 @@ watch(() => matchesStore.matches.length, async (newLength, oldLength) => {
 
 // Also watch the matches array itself for deep changes
 watch(() => matchesStore.matches, async (newMatches, oldMatches) => {
-  if (!selectedTournament.value) return
+  if (!selectedTournament.value || isSimpleLeague.value) return
   if (isCalculating.value) {
     console.log('Calculation already in progress, skipping watcher trigger')
     return
@@ -649,7 +819,7 @@ watch(() => matchesStore.matches, async (newMatches, oldMatches) => {
 
 const leagueTournaments = computed(() => {
   return tournamentsStore.tournaments
-    .filter(t => t.type === 'League')
+    .filter(t => t.type === 'League' || t.type === 'Simple League')
     .map(t => ({
       ...t,
       displayName: `${t.name} (${t.year})`
@@ -678,7 +848,39 @@ const tournamentTeams = computed(() => {
 
 const tournamentTeamMatches = computed(() => {
   if (!selectedTournament.value) return []
-  return teamMatchesStore.getTeamMatchesByTournament(selectedTournament.value)
+  
+  // Get team matches for this tournament
+  let matches = teamMatchesStore.getTeamMatchesByTournament(selectedTournament.value)
+  
+  // Additional safety check: verify tournament type matches
+  const tournament = tournamentsStore.tournaments.find(t => t.id === selectedTournament.value)
+  if (tournament?.type === 'Simple League') {
+    // For Simple League, only show team matches that were manually created
+    // Filter out any team matches that have the old calculated structure (myTeamId/opponentTeamId)
+    // Simple League team matches should only have team1Id/team2Id structure
+    matches = matches.filter(tm => {
+      // Exclude team matches that have the old calculated structure
+      if (tm.myTeamId || tm.opponentTeamId) {
+        return false
+      }
+      // Must have team1Id and team2Id (the manual structure)
+      if (!tm.team1Id || !tm.team2Id) {
+        return false
+      }
+      // Verify that both teams actually exist in the tournament
+      const team1 = tournamentTeams.value.find(t => t.id === tm.team1Id)
+      const team2 = tournamentTeams.value.find(t => t.id === tm.team2Id)
+      return team1 && team2
+    })
+  }
+  
+  return matches
+})
+
+const isSimpleLeague = computed(() => {
+  if (!selectedTournament.value) return false
+  const tournament = tournamentsStore.tournaments.find(t => t.id === selectedTournament.value)
+  return tournament?.type === 'Simple League'
 })
 
 const groupedByRound = computed(() => {
@@ -1056,6 +1258,95 @@ const handlePhotoFileChange = (value) => {
   }
 }
 
+const handleNewTeamMatchPhotoChange = (value) => {
+  const file = getFileFromInput(value)
+  
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      newTeamMatchPhotoPreview.value = e.target.result
+    }
+    reader.onerror = () => {
+      console.error('Error reading file')
+      newTeamMatchPhotoPreview.value = null
+    }
+    reader.readAsDataURL(file)
+  } else {
+    newTeamMatchPhotoPreview.value = null
+  }
+}
+
+const closeAddTeamMatchDialog = () => {
+  showAddTeamMatchDialog.value = false
+  newTeamMatch.value = {
+    team1Id: '',
+    team2Id: '',
+    round: '',
+    date: new Date().toISOString().split('T')[0],
+    team1Score: 0,
+    team2Score: 0,
+    photoFile: null
+  }
+  newTeamMatchPhotoPreview.value = null
+  if (teamMatchForm.value) {
+    teamMatchForm.value.reset()
+  }
+}
+
+const saveTeamMatch = async () => {
+  if (!teamMatchForm.value) return
+  
+  const { valid } = await teamMatchForm.value.validate()
+  if (!valid) return
+
+  if (!selectedTournament.value) {
+    alert('Please select a tournament first')
+    return
+  }
+
+  savingTeamMatch.value = true
+  try {
+    let photoUrl = null
+    
+    // Upload photo if provided
+    if (newTeamMatch.value.photoFile) {
+      const file = getFileFromInput(newTeamMatch.value.photoFile)
+      if (file) {
+        // Create a temporary ID for the photo path
+        const tempId = `temp_${Date.now()}`
+        photoUrl = await uploadImage(file, `teamMatches/${tempId}`)
+      }
+    }
+
+    const teamMatchData = {
+      tournamentId: selectedTournament.value,
+      team1Id: newTeamMatch.value.team1Id,
+      team2Id: newTeamMatch.value.team2Id,
+      round: String(newTeamMatch.value.round),
+      date: new Date(newTeamMatch.value.date),
+      team1Score: newTeamMatch.value.team1Score || 0,
+      team2Score: newTeamMatch.value.team2Score || 0,
+      photoUrl: photoUrl
+    }
+
+    const teamMatchId = await teamMatchesStore.addTeamMatch(teamMatchData)
+    
+    // If we uploaded a photo with a temp ID, update it with the real ID
+    if (photoUrl && teamMatchId) {
+      // The photo was already uploaded with the temp path, but we can re-upload with the real ID if needed
+      // For now, we'll keep the temp path as it works fine
+    }
+
+    closeAddTeamMatchDialog()
+    await teamMatchesStore.fetchTeamMatches()
+  } catch (error) {
+    console.error('Error saving team match:', error)
+    alert('Error saving team match. Please try again.')
+  } finally {
+    savingTeamMatch.value = false
+  }
+}
+
 const handlePhotoUpload = async () => {
   const file = getFileFromInput(photoFile.value)
   
@@ -1097,7 +1388,7 @@ const selectedTeamMatch = ref(null)
 const showTeamMatchDetail = ref(false)
 const photoFile = ref(null)
 const uploadingPhoto = ref(false)
-const photoPreview = ref(null)
+const teamMatchPhotoPreview = ref(null)
 
 const getPlayerTeamFromClub = (playerId, tournamentId) => {
   if (!playerId || !tournamentId) return null
@@ -1170,6 +1461,12 @@ const backfillTeamIds = async () => {
 const calculateTeamMatches = async () => {
   if (!selectedTournament.value) {
     console.log('No tournament selected')
+    return
+  }
+
+  // Skip calculation for Simple League tournaments - they use manual team matches
+  if (isSimpleLeague.value) {
+    console.log('Skipping team match calculation for Simple League')
     return
   }
 
@@ -1383,45 +1680,51 @@ const calculateTeamMatches = async () => {
     await teamMatchesStore.fetchTeamMatches()
     
     // Clean up orphaned team matches (e.g., when matches are moved to different rounds)
-    console.log('\n=== Cleaning up orphaned team matches ===')
-    const tournamentTeamMatches = teamMatchesStore.teamMatches.filter(
-      tm => tm.tournamentId === selectedTournament.value
-    )
-    
-    for (const teamMatch of tournamentTeamMatches) {
-      const teamMatchRound = String(teamMatch.round || '')
-      const team1Id = teamMatch.team1Id || teamMatch.myTeamId
-      const team2Id = teamMatch.team2Id || teamMatch.opponentTeamId
+    // Skip cleanup for Simple League tournaments - they use manually created team matches
+    const tournament = tournamentsStore.tournaments.find(t => t.id === selectedTournament.value)
+    if (tournament?.type !== 'Simple League') {
+      console.log('\n=== Cleaning up orphaned team matches ===')
+      const tournamentTeamMatches = teamMatchesStore.teamMatches.filter(
+        tm => tm.tournamentId === selectedTournament.value
+      )
       
-      if (!team1Id || !team2Id) {
-        console.log(`Skipping team match ${teamMatch.id} - missing team IDs`)
-        continue
-      }
-      
-      // Check if there are still 6 matches for this team pair in this round
-      const matchesForThisRoundAndPair = tournamentMatches.filter(m => {
-        const matchRound = String(m.round || '')
-        const matchTeam1Id = m.player1TeamId
-        const matchTeam2Id = m.player2TeamId
+      for (const teamMatch of tournamentTeamMatches) {
+        const teamMatchRound = String(teamMatch.round || '')
+        const team1Id = teamMatch.team1Id || teamMatch.myTeamId
+        const team2Id = teamMatch.team2Id || teamMatch.opponentTeamId
         
-        const isSameRound = matchRound === teamMatchRound
-        const isSamePair = (matchTeam1Id === team1Id && matchTeam2Id === team2Id) ||
-                          (matchTeam1Id === team2Id && matchTeam2Id === team1Id)
-        
-        return isSameRound && isSamePair && matchTeam1Id && matchTeam2Id
-      })
-      
-      if (matchesForThisRoundAndPair.length < 6) {
-        console.log(`✗ Deleting orphaned team match ${teamMatch.id}: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - only ${matchesForThisRoundAndPair.length} matches found (need 6)`)
-        try {
-          await teamMatchesStore.deleteTeamMatch(teamMatch.id)
-          console.log(`  ✓ Deleted team match ${teamMatch.id}`)
-        } catch (error) {
-          console.error(`  ✗ Error deleting team match ${teamMatch.id}:`, error)
+        if (!team1Id || !team2Id) {
+          console.log(`Skipping team match ${teamMatch.id} - missing team IDs`)
+          continue
         }
-      } else {
-        console.log(`✓ Team match ${teamMatch.id} is valid: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - ${matchesForThisRoundAndPair.length} matches`)
+        
+        // Check if there are still 6 matches for this team pair in this round
+        const matchesForThisRoundAndPair = tournamentMatches.filter(m => {
+          const matchRound = String(m.round || '')
+          const matchTeam1Id = m.player1TeamId
+          const matchTeam2Id = m.player2TeamId
+          
+          const isSameRound = matchRound === teamMatchRound
+          const isSamePair = (matchTeam1Id === team1Id && matchTeam2Id === team2Id) ||
+                            (matchTeam1Id === team2Id && matchTeam2Id === team1Id)
+          
+          return isSameRound && isSamePair && matchTeam1Id && matchTeam2Id
+        })
+        
+        if (matchesForThisRoundAndPair.length < 6) {
+          console.log(`✗ Deleting orphaned team match ${teamMatch.id}: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - only ${matchesForThisRoundAndPair.length} matches found (need 6)`)
+          try {
+            await teamMatchesStore.deleteTeamMatch(teamMatch.id)
+            console.log(`  ✓ Deleted team match ${teamMatch.id}`)
+          } catch (error) {
+            console.error(`  ✗ Error deleting team match ${teamMatch.id}:`, error)
+          }
+        } else {
+          console.log(`✓ Team match ${teamMatch.id} is valid: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - ${matchesForThisRoundAndPair.length} matches`)
+        }
       }
+    } else {
+      console.log('Skipping cleanup for Simple League tournament')
     }
     
     // Refresh team matches after cleanup
@@ -1441,7 +1744,66 @@ const calculateTeamMatches = async () => {
   }
 }
 
+const cleanupInvalidSimpleLeagueTeamMatches = async () => {
+  if (!selectedTournament.value) return
+  
+  const tournament = tournamentsStore.tournaments.find(t => t.id === selectedTournament.value)
+  if (tournament?.type !== 'Simple League') return
+  
+  console.log('Cleaning up invalid Simple League team matches...')
+  
+  const allTeamMatches = teamMatchesStore.getTeamMatchesByTournament(selectedTournament.value)
+  let deletedCount = 0
+  
+  for (const tm of allTeamMatches) {
+    let shouldDelete = false
+    
+    // Delete if it has the old calculated structure
+    if (tm.myTeamId || tm.opponentTeamId) {
+      shouldDelete = true
+      console.log(`Deleting team match ${tm.id}: has old calculated structure`)
+    }
+    // Delete if it's missing team IDs
+    else if (!tm.team1Id || !tm.team2Id) {
+      shouldDelete = true
+      console.log(`Deleting team match ${tm.id}: missing team IDs`)
+    }
+    // Delete if teams don't exist in the tournament
+    else {
+      const team1 = tournamentTeams.value.find(t => t.id === tm.team1Id)
+      const team2 = tournamentTeams.value.find(t => t.id === tm.team2Id)
+      if (!team1 || !team2) {
+        shouldDelete = true
+        console.log(`Deleting team match ${tm.id}: teams don't exist (${tm.team1Id}, ${tm.team2Id})`)
+      }
+    }
+    
+    if (shouldDelete) {
+      try {
+        await teamMatchesStore.deleteTeamMatch(tm.id)
+        deletedCount++
+      } catch (error) {
+        console.error(`Error deleting team match ${tm.id}:`, error)
+      }
+    }
+  }
+  
+  if (deletedCount > 0) {
+    console.log(`Cleaned up ${deletedCount} invalid Simple League team matches`)
+    await teamMatchesStore.fetchTeamMatches()
+  } else {
+    console.log('No invalid Simple League team matches found')
+  }
+}
+
 const refreshTeamMatches = async () => {
+  if (isSimpleLeague.value) {
+    // For Simple League, refresh team matches and clean up invalid ones
+    await teamMatchesStore.fetchTeamMatches()
+    await cleanupInvalidSimpleLeagueTeamMatches()
+    return
+  }
+  
   refreshing.value = true
   try {
     await Promise.all([

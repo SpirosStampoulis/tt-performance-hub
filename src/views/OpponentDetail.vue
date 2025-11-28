@@ -112,6 +112,83 @@
           </v-card-text>
         </v-card>
 
+        <v-card class="mb-4" v-if="matchupPrediction">
+          <v-card-title>
+            <v-icon class="mr-2" color="primary">mdi-chart-line</v-icon>
+            Matchup Prediction
+          </v-card-title>
+          <v-card-text>
+            <v-row>
+              <v-col cols="12" md="4">
+                <div class="text-center pa-4 bg-grey-lighten-4 rounded">
+                  <div 
+                    class="text-h3 font-weight-bold mb-2"
+                    :class="getProbabilityColor(matchupPrediction.winProbability)"
+                  >
+                    {{ matchupPrediction.winProbability }}%
+                  </div>
+                  <div class="text-caption text-medium-emphasis mb-2">Win Probability</div>
+                  <v-chip 
+                    size="small" 
+                    :color="getConfidenceColor(matchupPrediction.confidence)"
+                    class="mb-2"
+                  >
+                    {{ matchupPrediction.confidence }} confidence
+                  </v-chip>
+                </div>
+                
+                <div v-if="matchupPrediction.mttaRanking && matchupPrediction.mttaRanking.opponent" class="mt-4 pa-3 bg-info-lighten-5 rounded">
+                  <div class="text-subtitle-2 mb-2 text-center">MTTA Ranking</div>
+                  <div v-if="matchupPrediction.mttaRanking.opponent.startPosition" class="text-body-2 mb-1">
+                    <strong>Start Position:</strong> {{ matchupPrediction.mttaRanking.opponent.startPosition }}
+                  </div>
+                  <div v-if="matchupPrediction.mttaRanking.opponent.currentPosition" class="text-body-2 mb-1">
+                    <strong>Current Position:</strong> {{ matchupPrediction.mttaRanking.opponent.currentPosition }}
+                  </div>
+                  <div v-if="matchupPrediction.mttaRanking.opponent.totalPoints" class="text-body-2">
+                    <strong>Total Points:</strong> {{ matchupPrediction.mttaRanking.opponent.totalPoints }}
+                  </div>
+                </div>
+
+                <div v-if="matchupPrediction.playerToPlayerH2H && matchupPrediction.playerToPlayerH2H.total > 0" class="mt-4 pa-3 bg-success-lighten-5 rounded">
+                  <div class="text-subtitle-2 mb-2 text-center">Direct Head-to-Head</div>
+                  <div class="text-body-2 text-center">
+                    <div class="text-h6 mb-1">
+                      {{ matchupPrediction.playerToPlayerH2H.player1Wins }} - {{ matchupPrediction.playerToPlayerH2H.player2Wins }}
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ matchupPrediction.playerToPlayerH2H.total }} match{{ matchupPrediction.playerToPlayerH2H.total !== 1 ? 'es' : '' }}
+                    </div>
+                    <div class="text-caption text-medium-emphasis mt-1">
+                      Win Rate: {{ matchupPrediction.playerToPlayerH2H.player1WinRate }}%
+                    </div>
+                  </div>
+                </div>
+              </v-col>
+              <v-col cols="12" md="8">
+                <div class="text-subtitle-1 mb-2">Recommendation</div>
+                <div class="text-body-1 mb-3">{{ matchupPrediction.recommendation }}</div>
+                <div class="text-subtitle-1 mb-2">Key Factors</div>
+                <ul class="text-body-2">
+                  <li v-for="(factor, index) in matchupPrediction.factors" :key="index">{{ factor }}</li>
+                </ul>
+                
+                <v-divider class="my-3"></v-divider>
+                
+                <div class="text-subtitle-1 mb-2">Head-to-Head Record</div>
+                <div class="text-body-2 mb-1">
+                  <strong>Overall:</strong> {{ matchupPrediction.headToHead.wins }}W - {{ matchupPrediction.headToHead.losses }}L 
+                  ({{ matchupPrediction.headToHead.winRate }}% win rate)
+                </div>
+                <div v-if="matchupPrediction.recentForm.total > 0" class="text-body-2">
+                  <strong>Recent Form:</strong> {{ matchupPrediction.recentForm.wins }}W - {{ matchupPrediction.recentForm.total - matchupPrediction.recentForm.wins }}L 
+                  in last {{ matchupPrediction.recentForm.total }} matches
+                </div>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+
         <v-card class="mb-4" v-if="matches.length > 0">
           <v-card-title>Recent Form & Patterns</v-card-title>
           <v-card-text>
@@ -142,10 +219,6 @@
                 <div v-if="worstPerformance" class="text-body-2">
                   <v-icon size="small" color="error" class="mr-1">mdi-alert</v-icon>
                   Worst: {{ worstPerformance.score }} ({{ formatDate(worstPerformance.date) }})
-                </div>
-                <div v-if="winProbability > 0" class="text-body-2 mt-2">
-                  <v-icon size="small" color="primary" class="mr-1">mdi-chart-line</v-icon>
-                  Win Probability: {{ winProbability }}%
                 </div>
               </v-col>
             </v-row>
@@ -415,26 +488,18 @@ const worstPerformance = computed(() => {
   return worst
 })
 
+const matchupPrediction = computed(() => {
+  if (matches.value.length === 0 && !opponent.value) return null
+  
+  const PLAYER_NAME = 'Spiros Stampoulis'
+  const currentPlayer = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
+  const currentPlayerId = currentPlayer ? currentPlayer.id : null
+  
+  return matchesStore.predictMatchup(route.params.id, opponent.value, currentPlayerId)
+})
+
 const winProbability = computed(() => {
-  if (matches.value.length < 3) return 0
-  
-  const recentMatches = [...matches.value]
-    .filter(m => m.date)
-    .sort((a, b) => {
-      const dateA = a.date instanceof Date ? a.date : a.date.toDate()
-      const dateB = b.date instanceof Date ? b.date : b.date.toDate()
-      return dateB - dateA
-    })
-    .slice(0, 10)
-  
-  const recentWins = recentMatches.filter(m => getMatchResult(m) === 'Win').length
-  const recentWinRate = (recentWins / recentMatches.length) * 100
-  
-  const overallWinRate = parseFloat(headToHead.value.winRate)
-  
-  const weightedProbability = (recentWinRate * 0.6) + (overallWinRate * 0.4)
-  
-  return Math.round(weightedProbability)
+  return matchupPrediction.value ? matchupPrediction.value.winProbability : 0
 })
 
 const getInitials = (name) => {
@@ -505,6 +570,27 @@ const saveWeaknesses = async () => {
   opponent.value = await opponentsStore.getOpponent(opponent.value.id)
   weaknesses.value = opponent.value.weaknesses || ''
   editWeaknesses.value = false
+}
+
+const getProbabilityColor = (probability) => {
+  if (probability >= 70) return 'text-success'
+  if (probability >= 55) return 'text-primary'
+  if (probability >= 45) return 'text-info'
+  if (probability >= 30) return 'text-warning'
+  return 'text-error'
+}
+
+const getConfidenceColor = (confidence) => {
+  switch (confidence) {
+    case 'high':
+      return 'success'
+    case 'medium':
+      return 'primary'
+    case 'low':
+      return 'warning'
+    default:
+      return 'grey'
+  }
 }
 </script>
 

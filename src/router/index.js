@@ -88,6 +88,18 @@ const routes = [
     component: () => import('../views/PracticeView.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/streaks',
+    name: 'Streaks',
+    component: () => import('../views/StreaksView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/match-preparation',
+    name: 'MatchPreparation',
+    component: () => import('../views/MatchPreparationView.vue'),
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({

@@ -97,6 +97,22 @@
             class="modern-nav-item"
             rounded="lg"
           ></v-list-item>
+          <v-list-item
+            prepend-icon="mdi-fire"
+            title="Streaks"
+            value="streaks"
+            to="/streaks"
+            class="modern-nav-item"
+            rounded="lg"
+          ></v-list-item>
+          <v-list-item
+            prepend-icon="mdi-clipboard-text"
+            title="Match Preparation"
+            value="match-preparation"
+            to="/match-preparation"
+            class="modern-nav-item"
+            rounded="lg"
+          ></v-list-item>
         </v-list>
 
         <template v-slot:append>
@@ -159,6 +175,8 @@ const pageTitle = computed(() => {
     Skills: 'Skill Library',
     Goals: 'Goals',
     Practice: 'Practice Log',
+    Streaks: 'Streaks & Milestones',
+    MatchPreparation: 'Match Preparation',
     Login: 'Login'
   }
   return titles[route.name] || 'TT Performance Hub'

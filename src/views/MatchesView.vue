@@ -83,11 +83,11 @@
           :class="{ 'scheduled-match': isScheduled(match), 'completed-match': !isScheduled(match) }"
           elevation="3"
         >
-          <v-card-text class="pa-5">
-            <v-row align="center">
-              <v-col>
-                <div class="d-flex align-center mb-2 flex-wrap">
-                  <div class="text-h6 font-weight-bold">
+          <v-card-text class="match-card-content">
+            <v-row align="center" class="match-row">
+              <v-col cols="12" md="6" class="match-info-col">
+                <div class="d-flex align-center mb-2 flex-wrap match-header">
+                  <div class="match-title">
                     <span v-if="match.isDoubles && match.player1Id && match.player2Id && match.player3Id && match.player4Id">
                       {{ getPlayerName(match.player1Id) }} & {{ getPlayerName(match.player3Id) }} vs {{ getPlayerName(match.player2Id) }} & {{ getPlayerName(match.player4Id) }}
                       <v-chip size="x-small" color="accent" variant="flat" class="ml-2">Doubles</v-chip>
@@ -110,38 +110,39 @@
                     <span class="scheduled-text">Scheduled</span>
                   </div>
                 </div>
-                <div class="text-subtitle-2 text-medium-emphasis mb-2">
+                <div class="match-meta">
                   <v-icon size="small" class="mr-1">mdi-calendar</v-icon>
-                  {{ formatDate(match.date) }} • {{ getTournamentName(match.tournamentId) || 'Friendly Match' }}
-                  <span v-if="match.round"> • {{ match.round }}</span>
+                  <span>{{ formatDate(match.date) }}</span>
+                  <span class="mx-1">•</span>
+                  <span>{{ getTournamentName(match.tournamentId) || 'Friendly Match' }}</span>
+                  <span v-if="match.round" class="mx-1">•</span>
+                  <span v-if="match.round" class="match-round">Round {{ match.round }}</span>
                 </div>
-                <div v-if="match.player1TeamId || match.player2TeamId" class="text-caption mt-1 mb-2">
+                <div v-if="match.player1TeamId || match.player2TeamId" class="match-teams">
                   <v-chip size="x-small" color="primary" variant="flat" class="mr-1">{{ getTeamName(match.player1TeamId) }}</v-chip>
                   vs
                   <v-chip size="x-small" color="secondary" variant="flat" class="ml-1">{{ getTeamName(match.player2TeamId) }}</v-chip>
                 </div>
-                <div v-if="isScheduled(match) && (!match.player1Id || !match.player2Id)" class="text-caption text-info mt-1">
+                <div v-if="isScheduled(match) && (!match.player1Id || !match.player2Id)" class="match-info-note">
                   <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
                   Players to be determined
                 </div>
               </v-col>
-              <v-col cols="auto" v-if="!isScheduled(match)">
-                <div class="text-center">
-                  <div class="text-h4 font-weight-bold text-primary mb-1">{{ getSetsWon(match) }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ getSetBreakdown(match) }}</div>
-                </div>
-              </v-col>
-              <v-col cols="auto" v-else>
-                <div class="upcoming-badge">
-                  <v-icon class="upcoming-icon">mdi-calendar-clock</v-icon>
-                  <span class="upcoming-text">Upcoming</span>
-                </div>
-              </v-col>
-              <v-col cols="auto">
-                <div class="d-flex flex-column ga-2">
-                  <v-btn icon="mdi-pencil" variant="text" size="small" @click.stop="openMatchDialog(match)"></v-btn>
-                  <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click.stop="confirmDelete(match)"></v-btn>
-                  <v-btn v-if="!isScheduled(match)" icon="mdi-arrow-right" variant="text" size="small" :to="`/matches/${match.id}`"></v-btn>
+              <v-col cols="12" md="auto" class="match-right-col">
+                <div class="d-flex align-center match-right-content">
+                  <div v-if="!isScheduled(match)" class="match-score match-score-desktop">
+                    <div class="match-score-value">{{ getSetsWon(match) }}</div>
+                    <div class="match-score-breakdown">{{ getSetBreakdown(match) }}</div>
+                  </div>
+                  <div v-if="!isScheduled(match)" class="match-score match-score-mobile">
+                    <div class="match-score-value">{{ getSetsWon(match) }}</div>
+                    <div class="match-score-breakdown">{{ getSetBreakdown(match) }}</div>
+                  </div>
+                  <div class="match-actions">
+                    <v-btn icon="mdi-pencil" variant="text" size="small" @click.stop="openMatchDialog(match)" class="action-btn"></v-btn>
+                    <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click.stop="confirmDelete(match)" class="action-btn"></v-btn>
+                    <v-btn v-if="!isScheduled(match)" icon="mdi-arrow-right" variant="text" size="small" :to="`/matches/${match.id}`" class="action-btn"></v-btn>
+                  </div>
                 </div>
               </v-col>
             </v-row>
@@ -1611,6 +1612,124 @@ const getTeamName = (teamId) => {
   box-shadow: 0 8px 24px rgba(220, 20, 60, 0.25) !important;
 }
 
+.match-card-content {
+  padding: 20px !important;
+}
+
+@media (max-width: 960px) {
+  .match-card-content {
+    padding: 16px !important;
+  }
+  
+  .match-row {
+    flex-direction: column;
+  }
+  
+  .match-info-col {
+    order: 1;
+    padding-bottom: 12px !important;
+    width: 100%;
+  }
+  
+  .match-info-col {
+    order: 1;
+  }
+  
+  .match-right-col {
+    order: 2;
+    width: 100%;
+    padding-top: 12px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  .match-right-content {
+    width: 100%;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+  
+  .match-right-col {
+    justify-content: flex-start !important;
+  }
+  
+  .match-score-desktop {
+    display: none !important;
+  }
+  
+  .match-score-mobile {
+    display: block !important;
+    text-align: left;
+  }
+  
+  .match-score-mobile .match-score-value {
+    font-size: 2rem !important;
+  }
+  
+  .match-actions {
+    flex-shrink: 0;
+  }
+  
+  .match-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .match-title {
+    font-size: 1.1rem !important;
+    line-height: 1.4;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .match-header {
+    flex-wrap: wrap;
+  }
+  
+  .match-meta {
+    font-size: 0.8rem !important;
+    margin-bottom: 8px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .match-meta span {
+    display: inline;
+    white-space: nowrap;
+  }
+  
+  .match-meta .v-icon {
+    flex-shrink: 0;
+  }
+  
+  .upcoming-badge {
+    min-width: 60px;
+    padding: 8px 12px;
+  }
+  
+  .upcoming-icon {
+    font-size: 20px !important;
+    margin-bottom: 2px;
+  }
+  
+  .upcoming-text {
+    font-size: 10px !important;
+  }
+  
+  .match-score {
+    text-align: center;
+  }
+  
+  .match-score-value {
+    font-size: 2rem !important;
+  }
+}
+
 .scheduled-match {
   border-left: 5px solid #FFD700;
   border-color: rgba(255, 215, 0, 0.4);
@@ -1689,10 +1808,10 @@ const getTeamName = (teamId) => {
   justify-content: center;
   background: linear-gradient(135deg, #FFD700 0%, #FFC107 50%, #FF9800 100%);
   color: white;
-  padding: 16px 20px;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
-  min-width: 100px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(255, 215, 0, 0.4);
+  min-width: 70px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -1719,17 +1838,146 @@ const getTeamName = (teamId) => {
 }
 
 .upcoming-icon {
-  font-size: 32px !important;
-  margin-bottom: 4px;
+  font-size: 24px !important;
+  margin-bottom: 2px;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .upcoming-text {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.match-header {
+  margin-bottom: 8px;
+}
+
+.match-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.match-meta {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-round {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.match-teams {
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.match-info-note {
+  font-size: 0.75rem;
+  color: #2196F3;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.match-score {
+  text-align: center;
+  padding: 8px;
+}
+
+.match-score-mobile {
+  display: none;
+}
+
+.match-score-desktop {
+  display: none;
+}
+
+.match-score-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #DC143C;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.match-score-breakdown {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.match-right-col {
+  flex: 0 0 auto;
+}
+
+.match-right-content {
+  min-width: fit-content;
+  justify-content: flex-start;
+}
+
+@media (min-width: 960px) {
+  .match-score-desktop {
+    display: block;
+  }
+  
+  .match-info-col {
+    flex: 0 0 auto;
+  }
+  
+  .match-right-col {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .match-right-content {
+    justify-content: flex-end;
+  }
+}
+
+.match-right-col {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.match-right-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.match-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+@media (min-width: 960px) {
+  .match-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.action-btn {
+  min-width: 40px;
 }
 
 /* Remove floating label animation for General Notes to prevent it going above other text */

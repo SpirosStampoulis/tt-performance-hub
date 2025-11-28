@@ -24,9 +24,9 @@
     </v-row>
     
     <v-row>
-      <v-col cols="12" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card stat-card-1" elevation="4">
-          <v-card-text class="pa-6">
+          <v-card-text class="pa-6 stat-card-content">
             <div class="d-flex align-center mb-3">
               <v-icon size="32" color="white" class="mr-3">mdi-trophy</v-icon>
               <div class="text-h6 text-white font-weight-bold">Total Matches</div>
@@ -37,9 +37,9 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card stat-card-2" elevation="4">
-          <v-card-text class="pa-6">
+          <v-card-text class="pa-6 stat-card-content">
             <div class="d-flex align-center mb-3">
               <v-icon size="32" color="white" class="mr-3">mdi-chart-line</v-icon>
               <div class="text-h6 text-white font-weight-bold">Win Rate</div>
@@ -50,9 +50,9 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card stat-card-3" elevation="4">
-          <v-card-text class="pa-6">
+          <v-card-text class="pa-6 stat-card-content">
             <div class="d-flex align-center mb-3">
               <v-icon size="32" color="white" class="mr-3">mdi-chart-pie</v-icon>
               <div class="text-h6 text-white font-weight-bold">Sets Won %</div>
@@ -63,9 +63,9 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card stat-card-4" elevation="4">
-          <v-card-text class="pa-6">
+          <v-card-text class="pa-6 stat-card-content">
             <div class="d-flex align-center mb-3">
               <v-icon size="32" color="white" class="mr-3">mdi-account-group</v-icon>
               <div class="text-h6 text-white font-weight-bold">Players Tracked</div>
@@ -456,6 +456,7 @@ const goToSkills = () => {
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
+  background: white !important;
 }
 
 .stat-card:hover {
@@ -464,19 +465,46 @@ const goToSkills = () => {
 }
 
 .stat-card-1 {
-  background: linear-gradient(135deg, #DC143C 0%, #C8102E 100%);
+  background: linear-gradient(135deg, #DC143C 0%, #C8102E 100%) !important;
 }
 
 .stat-card-2 {
-  background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
+  background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%) !important;
 }
 
 .stat-card-3 {
-  background: linear-gradient(135deg, #DC143C 0%, #FF6B35 100%);
+  background: linear-gradient(135deg, #DC143C 0%, #FF6B35 100%) !important;
 }
 
 .stat-card-4 {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%) !important;
+}
+
+.stat-card :deep(.v-card) {
+  background: transparent !important;
+}
+
+.stat-card :deep(.v-card-text) {
+  background: transparent !important;
+}
+
+.stat-card-content {
+  background: transparent !important;
+}
+
+.stat-card :deep(*) {
+  background: transparent !important;
+}
+
+.stat-card-1 :deep(.v-card),
+.stat-card-1 :deep(.v-card-text),
+.stat-card-2 :deep(.v-card),
+.stat-card-2 :deep(.v-card-text),
+.stat-card-3 :deep(.v-card),
+.stat-card-3 :deep(.v-card-text),
+.stat-card-4 :deep(.v-card),
+.stat-card-4 :deep(.v-card-text) {
+  background: transparent !important;
 }
 
 .modern-card {

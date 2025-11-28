@@ -3,7 +3,7 @@
     <v-row>
       <v-col>
         <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="$router.back()">
-          Back to Players
+          Back
         </v-btn>
       </v-col>
       <v-col cols="12" md="4">

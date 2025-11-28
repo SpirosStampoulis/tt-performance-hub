@@ -209,7 +209,7 @@
               <tr v-for="(team, index) in standings" :key="team.id" :class="{ 'bg-primary-lighten-4': team.isMyTeam }">
                 <td>{{ index + 1 }}</td>
                 <td>
-                  <a @click="viewTeamMatches(team)" style="cursor: pointer; text-decoration: underline; color: inherit;">
+                  <a @click="viewTeamMatches(team)" style="cursor: pointer; text-decoration: none; color: inherit;">
                     {{ team.name }}
                   </a>
                 </td>
@@ -430,11 +430,27 @@
                           <v-chip size="x-small" color="primary" variant="flat">{{ index + 1 }}</v-chip>
                         </td>
                         <td>
-                          <span :class="getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
+                          <a 
+                            v-if="match.player1Id"
+                            @click.stop="$router.push(`/opponents/${match.player1Id}`)"
+                            :class="['player-link', getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)]"
+                            style="cursor: pointer; text-decoration: none; color: inherit;"
+                          >
+                            {{ getPlayerName(match.player1Id) }}
+                          </a>
+                          <span v-else :class="getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
                             {{ getPlayerName(match.player1Id) }}
                           </span>
                           <span class="mx-2">vs</span>
-                          <span :class="getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)">
+                          <a 
+                            v-if="match.player2Id"
+                            @click.stop="$router.push(`/opponents/${match.player2Id}`)"
+                            :class="['player-link', getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)]"
+                            style="cursor: pointer; text-decoration: none; color: inherit;"
+                          >
+                            {{ getPlayerName(match.player2Id) }}
+                          </a>
+                          <span v-else :class="getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)">
                             {{ getPlayerName(match.player2Id) }}
                           </span>
                         </td>

@@ -1638,9 +1638,13 @@ const getTeamName = (teamId) => {
   .match-right-col {
     order: 2;
     width: 100%;
-    padding-top: 12px !important;
+    padding-top: 4px !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
+  }
+  
+  .match-info-col {
+    padding-bottom: 4px !important;
   }
   
   .match-right-content {
@@ -1873,6 +1877,17 @@ const getTeamName = (teamId) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 960px) {
+  .match-meta {
+    flex-wrap: wrap;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.5;
+    max-height: 3em;
+  }
 }
 
 .match-round {

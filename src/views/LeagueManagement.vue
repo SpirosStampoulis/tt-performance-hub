@@ -32,7 +32,7 @@
     </v-row>
 
     <v-row v-if="selectedTournament">
-      <v-col cols="12" md="8">
+      <v-col cols="12" md="8" :order-md="1" :order="2">
         <v-card class="mb-4" v-if="upcomingMatches.length > 0">
           <v-card-title>
             <v-icon class="mr-2">mdi-clock-outline</v-icon>
@@ -157,13 +157,16 @@
                     class="mb-2"
                     style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px;"
                   >
-                    <v-list-item-title class="text-h6 mb-1">
-                      {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
+                    <v-list-item-title class="mb-1" style="white-space: normal; word-break: break-word; line-height: 1.4; overflow: visible;">
+                      <span class="text-body-1 text-md-h6">
+                        {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
+                      </span>
                       <v-icon 
                         v-if="teamMatch.photoUrl" 
                         size="small" 
                         color="primary" 
                         class="ml-2"
+                        style="display: inline-block; vertical-align: middle;"
                       >
                         mdi-image
                       </v-icon>
@@ -183,7 +186,7 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="4" v-if="!isSimpleLeague">
+      <v-col cols="12" md="4" v-if="!isSimpleLeague" :order-md="2" :order="1">
         <v-card>
           <v-card-title>
             <v-icon class="mr-2">mdi-podium</v-icon>
@@ -242,7 +245,7 @@
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="4" v-if="isSimpleLeague">
+      <v-col cols="12" md="4" v-if="isSimpleLeague" :order-md="2" :order="1">
         <v-card>
           <v-card-title>
             <v-icon class="mr-2">mdi-shield-account</v-icon>

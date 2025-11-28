@@ -2,7 +2,14 @@
   <v-container>
     <v-row class="mb-4">
       <v-col>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openMatchDialog()">
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="openMatchDialog()"
+          size="large"
+          rounded="lg"
+          elevation="2"
+        >
           Add Match
         </v-btn>
       </v-col>
@@ -71,15 +78,19 @@
 
     <v-row>
       <v-col v-for="match in filteredMatches" :key="match.id" cols="12">
-        <v-card :class="{ 'border-scheduled': isScheduled(match) }">
-          <v-card-text>
+        <v-card
+          class="match-card"
+          :class="{ 'scheduled-match': isScheduled(match), 'completed-match': !isScheduled(match) }"
+          elevation="3"
+        >
+          <v-card-text class="pa-5">
             <v-row align="center">
               <v-col>
-                <div class="d-flex align-center mb-1">
-                  <div class="text-h6">
+                <div class="d-flex align-center mb-2 flex-wrap">
+                  <div class="text-h6 font-weight-bold">
                     <span v-if="match.isDoubles && match.player1Id && match.player2Id && match.player3Id && match.player4Id">
                       {{ getPlayerName(match.player1Id) }} & {{ getPlayerName(match.player3Id) }} vs {{ getPlayerName(match.player2Id) }} & {{ getPlayerName(match.player4Id) }}
-                      <v-chip size="x-small" color="info" class="ml-2">Doubles</v-chip>
+                      <v-chip size="x-small" color="accent" variant="flat" class="ml-2">Doubles</v-chip>
                     </span>
                     <span v-else-if="match.player1Id && match.player2Id">
                       {{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}
@@ -91,24 +102,23 @@
                       Match TBD
                     </span>
                   </div>
-                  <v-chip
+                  <div
                     v-if="isScheduled(match)"
-                    size="small"
-                    color="info"
-                    class="ml-2"
+                    class="ml-2 scheduled-badge"
                   >
-                    <v-icon start size="small">mdi-clock-outline</v-icon>
-                    Scheduled
-                  </v-chip>
+                    <v-icon size="small" class="scheduled-icon">mdi-clock-outline</v-icon>
+                    <span class="scheduled-text">Scheduled</span>
+                  </div>
                 </div>
-                <div class="text-subtitle-2 text-medium-emphasis">
+                <div class="text-subtitle-2 text-medium-emphasis mb-2">
+                  <v-icon size="small" class="mr-1">mdi-calendar</v-icon>
                   {{ formatDate(match.date) }} • {{ getTournamentName(match.tournamentId) || 'Friendly Match' }}
                   <span v-if="match.round"> • {{ match.round }}</span>
                 </div>
-                <div v-if="match.player1TeamId || match.player2TeamId" class="text-caption mt-1">
-                  <v-chip size="x-small" class="mr-1">{{ getTeamName(match.player1TeamId) }}</v-chip>
+                <div v-if="match.player1TeamId || match.player2TeamId" class="text-caption mt-1 mb-2">
+                  <v-chip size="x-small" color="primary" variant="flat" class="mr-1">{{ getTeamName(match.player1TeamId) }}</v-chip>
                   vs
-                  <v-chip size="x-small" class="ml-1">{{ getTeamName(match.player2TeamId) }}</v-chip>
+                  <v-chip size="x-small" color="secondary" variant="flat" class="ml-1">{{ getTeamName(match.player2TeamId) }}</v-chip>
                 </div>
                 <div v-if="isScheduled(match) && (!match.player1Id || !match.player2Id)" class="text-caption text-info mt-1">
                   <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
@@ -116,19 +126,23 @@
                 </div>
               </v-col>
               <v-col cols="auto" v-if="!isScheduled(match)">
-                <div class="text-h5">{{ getSetsWon(match) }}</div>
-                <div class="text-caption text-medium-emphasis">{{ getSetBreakdown(match) }}</div>
+                <div class="text-center">
+                  <div class="text-h4 font-weight-bold text-primary mb-1">{{ getSetsWon(match) }}</div>
+                  <div class="text-caption text-medium-emphasis">{{ getSetBreakdown(match) }}</div>
+                </div>
               </v-col>
               <v-col cols="auto" v-else>
-                <v-chip color="info" variant="outlined">
-                  <v-icon start>mdi-calendar-clock</v-icon>
-                  Upcoming
-                </v-chip>
+                <div class="upcoming-badge">
+                  <v-icon class="upcoming-icon">mdi-calendar-clock</v-icon>
+                  <span class="upcoming-text">Upcoming</span>
+                </div>
               </v-col>
               <v-col cols="auto">
-                <v-btn icon="mdi-pencil" variant="text" @click="openMatchDialog(match)"></v-btn>
-                <v-btn icon="mdi-delete" variant="text" color="error" @click="confirmDelete(match)"></v-btn>
-                <v-btn v-if="!isScheduled(match)" icon="mdi-arrow-right" variant="text" :to="`/matches/${match.id}`"></v-btn>
+                <div class="d-flex flex-column ga-2">
+                  <v-btn icon="mdi-pencil" variant="text" size="small" @click.stop="openMatchDialog(match)"></v-btn>
+                  <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click.stop="confirmDelete(match)"></v-btn>
+                  <v-btn v-if="!isScheduled(match)" icon="mdi-arrow-right" variant="text" size="small" :to="`/matches/${match.id}`"></v-btn>
+                </div>
               </v-col>
             </v-row>
           </v-card-text>
@@ -1584,8 +1598,138 @@ const getTeamName = (teamId) => {
   height: 100%;
 }
 
-.border-scheduled {
-  border-left: 4px solid #2196F3 !important;
+.match-card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  border: 3px solid transparent;
+  margin-bottom: 16px;
+  background: white !important;
+}
+
+.match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 20, 60, 0.25) !important;
+}
+
+.scheduled-match {
+  border-left: 5px solid #FFD700;
+  border-color: rgba(255, 215, 0, 0.4);
+  background: white !important;
+}
+
+.scheduled-match:hover {
+  border-color: #FFD700;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%) !important;
+  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3) !important;
+}
+
+.completed-match {
+  border-left: 5px solid #DC143C;
+  border-color: rgba(220, 20, 60, 0.4);
+  background: white !important;
+}
+
+.completed-match:hover {
+  border-color: #DC143C;
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.1) 0%, rgba(200, 16, 46, 0.1) 100%) !important;
+  box-shadow: 0 8px 24px rgba(220, 20, 60, 0.3) !important;
+}
+
+.scheduled-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #FFD700 0%, #FFC107 50%, #FF9800 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.scheduled-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.scheduled-badge:hover::before {
+  left: 100%;
+}
+
+.scheduled-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+}
+
+.scheduled-icon {
+  color: white !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.scheduled-text {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.3px;
+}
+
+.upcoming-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #FFD700 0%, #FFC107 50%, #FF9800 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
+  min-width: 100px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.upcoming-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.upcoming-badge:hover::before {
+  left: 100%;
+}
+
+.upcoming-badge:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+}
+
+.upcoming-icon {
+  font-size: 32px !important;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.upcoming-text {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* Remove floating label animation for General Notes to prevent it going above other text */

@@ -25,39 +25,53 @@
     
     <v-row>
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-h6 mb-2">Total Matches</div>
-            <div class="text-h3">{{ dashboardStats.totalMatches }}</div>
+        <v-card class="stat-card stat-card-1" elevation="4">
+          <v-card-text class="pa-6">
+            <div class="d-flex align-center mb-3">
+              <v-icon size="32" color="white" class="mr-3">mdi-trophy</v-icon>
+              <div class="text-h6 text-white font-weight-bold">Total Matches</div>
+            </div>
+            <div class="text-h2 text-white font-weight-bold mb-1">{{ dashboardStats.totalMatches }}</div>
+            <div class="text-caption text-white text-opacity-90">All time matches</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-h6 mb-2">Win Rate</div>
-            <div class="text-h3">{{ dashboardStats.winPercentage }}%</div>
-            <div class="text-caption">{{ dashboardStats.wins }}W - {{ dashboardStats.losses }}L</div>
+        <v-card class="stat-card stat-card-2" elevation="4">
+          <v-card-text class="pa-6">
+            <div class="d-flex align-center mb-3">
+              <v-icon size="32" color="white" class="mr-3">mdi-chart-line</v-icon>
+              <div class="text-h6 text-white font-weight-bold">Win Rate</div>
+            </div>
+            <div class="text-h2 text-white font-weight-bold mb-1">{{ dashboardStats.winPercentage }}%</div>
+            <div class="text-caption text-white text-opacity-90">{{ dashboardStats.wins }}W - {{ dashboardStats.losses }}L</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-h6 mb-2">Sets Won %</div>
-            <div class="text-h3">{{ matchesStore.advancedStats.setsWonPercentage }}%</div>
-            <div class="text-caption">{{ matchesStore.advancedStats.totalSetsWon }}W - {{ matchesStore.advancedStats.totalSetsLost }}L</div>
+        <v-card class="stat-card stat-card-3" elevation="4">
+          <v-card-text class="pa-6">
+            <div class="d-flex align-center mb-3">
+              <v-icon size="32" color="white" class="mr-3">mdi-chart-pie</v-icon>
+              <div class="text-h6 text-white font-weight-bold">Sets Won %</div>
+            </div>
+            <div class="text-h2 text-white font-weight-bold mb-1">{{ matchesStore.advancedStats.setsWonPercentage }}%</div>
+            <div class="text-caption text-white text-opacity-90">{{ matchesStore.advancedStats.totalSetsWon }}W - {{ matchesStore.advancedStats.totalSetsLost }}L</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-h6 mb-2">Players Tracked</div>
-            <div class="text-h3">{{ opponentsStore.opponents.length }}</div>
+        <v-card class="stat-card stat-card-4" elevation="4">
+          <v-card-text class="pa-6">
+            <div class="d-flex align-center mb-3">
+              <v-icon size="32" color="white" class="mr-3">mdi-account-group</v-icon>
+              <div class="text-h6 text-white font-weight-bold">Players Tracked</div>
+            </div>
+            <div class="text-h2 text-white font-weight-bold mb-1">{{ opponentsStore.opponents.length }}</div>
+            <div class="text-caption text-white text-opacity-90">Total opponents</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -65,37 +79,37 @@
 
     <v-row v-if="matchesStore.advancedStats.averageServeSuccess > 0 || matchesStore.advancedStats.averageReturnPoints > 0">
       <v-col cols="12" md="4">
-        <v-card>
-          <v-card-text>
-            <div class="text-h6 mb-2">
-              <v-icon class="mr-2">mdi-tennis</v-icon>
-              Avg Serve Success
+        <v-card class="modern-card" elevation="3">
+          <v-card-text class="pa-5">
+            <div class="d-flex align-center mb-3">
+              <v-icon class="mr-2" color="primary" size="28">mdi-tennis</v-icon>
+              <div class="text-h6 font-weight-bold">Avg Serve Success</div>
             </div>
-            <div class="text-h3">{{ matchesStore.advancedStats.averageServeSuccess }}%</div>
+            <div class="text-h3 font-weight-bold text-primary">{{ matchesStore.advancedStats.averageServeSuccess }}%</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="4">
-        <v-card>
-          <v-card-text>
-            <div class="text-h6 mb-2">
-              <v-icon class="mr-2">mdi-swap-horizontal</v-icon>
-              Avg Return Points
+        <v-card class="modern-card" elevation="3">
+          <v-card-text class="pa-5">
+            <div class="d-flex align-center mb-3">
+              <v-icon class="mr-2" color="secondary" size="28">mdi-swap-horizontal</v-icon>
+              <div class="text-h6 font-weight-bold">Avg Return Points</div>
             </div>
-            <div class="text-h3">{{ matchesStore.advancedStats.averageReturnPoints }}%</div>
+            <div class="text-h3 font-weight-bold text-secondary">{{ matchesStore.advancedStats.averageReturnPoints }}%</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="4" v-if="matchesStore.advancedStats.averageMatchDuration > 0">
-        <v-card>
-          <v-card-text>
-            <div class="text-h6 mb-2">
-              <v-icon class="mr-2">mdi-clock-outline</v-icon>
-              Avg Match Duration
+        <v-card class="modern-card" elevation="3">
+          <v-card-text class="pa-5">
+            <div class="d-flex align-center mb-3">
+              <v-icon class="mr-2" color="info" size="28">mdi-clock-outline</v-icon>
+              <div class="text-h6 font-weight-bold">Avg Match Duration</div>
             </div>
-            <div class="text-h3">{{ matchesStore.advancedStats.averageMatchDuration }} min</div>
+            <div class="text-h3 font-weight-bold text-info">{{ matchesStore.advancedStats.averageMatchDuration }} min</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -103,58 +117,62 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-trophy</v-icon>
-            Recent Matches
+        <v-card class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="primary">mdi-trophy</v-icon>
+            <span class="font-weight-bold">Recent Matches</span>
           </v-card-title>
-          <v-divider></v-divider>
-          <v-list v-if="filteredMatches.slice(0, 5).length > 0">
+          <v-divider class="mx-4"></v-divider>
+          <v-list v-if="filteredMatches.slice(0, 5).length > 0" class="pa-2">
             <v-list-item
               v-for="match in filteredMatches.slice(0, 5)"
               :key="match.id"
               :to="`/matches/${match.id}`"
+              class="modern-list-item mb-2"
+              rounded="lg"
             >
-              <v-list-item-title>
+              <v-list-item-title class="font-weight-medium">
                 {{ getPlayerName(match.player1Id || match.opponentId) }} vs {{ getPlayerName(match.player2Id || match.opponentId) }}
               </v-list-item-title>
               <v-list-item-subtitle>
                 {{ formatDateShort(match.date) }}
               </v-list-item-subtitle>
               <template v-slot:append>
-                <div class="text-caption">{{ getScoreSummary(match) }}</div>
+                <v-chip size="small" color="primary" variant="flat">{{ getScoreSummary(match) }}</v-chip>
               </template>
             </v-list-item>
           </v-list>
-          <v-card-text v-else class="text-center text-medium-emphasis">
+          <v-card-text v-else class="text-center text-medium-emphasis pa-6">
             No matches recorded yet
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-tournament</v-icon>
-            Recent Tournaments
+        <v-card class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="secondary">mdi-tournament</v-icon>
+            <span class="font-weight-bold">Recent Tournaments</span>
           </v-card-title>
-          <v-divider></v-divider>
-          <v-list v-if="recentTournaments.length > 0">
+          <v-divider class="mx-4"></v-divider>
+          <v-list v-if="recentTournaments.length > 0" class="pa-2">
             <v-list-item
               v-for="tournament in recentTournaments"
               :key="tournament.id"
               :to="`/tournaments`"
+              class="modern-list-item mb-2"
+              rounded="lg"
             >
-              <v-list-item-title>{{ tournament.name }}</v-list-item-title>
+              <v-list-item-title class="font-weight-medium">{{ tournament.name }}</v-list-item-title>
               <v-list-item-subtitle>
                 {{ getTournamentMatchCount(tournament.id) }} matches
               </v-list-item-subtitle>
               <template v-slot:append>
-                <v-icon>mdi-arrow-right</v-icon>
+                <v-icon color="secondary">mdi-arrow-right</v-icon>
               </template>
             </v-list-item>
           </v-list>
-          <v-card-text v-else class="text-center text-medium-emphasis">
+          <v-card-text v-else class="text-center text-medium-emphasis pa-6">
             No tournaments yet
           </v-card-text>
         </v-card>
@@ -163,16 +181,24 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <v-card v-if="matchesStore.matches.length > 0">
-          <v-card-text>
+        <v-card v-if="matchesStore.matches.length > 0" class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="primary">mdi-chart-arc</v-icon>
+            <span class="font-weight-bold">Win Rate</span>
+          </v-card-title>
+          <v-card-text class="pa-4">
             <WinRateChart :matches="matchesStore.matches" />
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="6">
-        <v-card v-if="recentTournaments.length > 0">
-          <v-card-text>
+        <v-card v-if="recentTournaments.length > 0" class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="secondary">mdi-chart-donut</v-icon>
+            <span class="font-weight-bold">Division Performance</span>
+          </v-card-title>
+          <v-card-text class="pa-4">
             <DivisionChart :recordByDivision="recordByTournament" />
           </v-card-text>
         </v-card>
@@ -181,16 +207,24 @@
 
     <v-row v-if="matchesStore.performanceByMonth.length > 0">
       <v-col cols="12" md="6">
-        <v-card>
-          <v-card-text>
+        <v-card class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="info">mdi-chart-line-variant</v-icon>
+            <span class="font-weight-bold">Performance Trend</span>
+          </v-card-title>
+          <v-card-text class="pa-4">
             <PerformanceTrendChart :monthlyData="matchesStore.performanceByMonth" />
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="6" v-if="matchesStore.setsTrend.length > 0">
-        <v-card>
-          <v-card-text>
+        <v-card class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="success">mdi-chart-bar</v-icon>
+            <span class="font-weight-bold">Sets Trend</span>
+          </v-card-title>
+          <v-card-text class="pa-4">
             <SetsTrendChart :setsTrend="matchesStore.setsTrend" />
           </v-card-text>
         </v-card>
@@ -199,30 +233,32 @@
 
     <v-row>
       <v-col cols="12">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-school</v-icon>
-            Skills in Development
+        <v-card class="modern-card" elevation="3">
+          <v-card-title class="modern-card-title">
+            <v-icon class="mr-2" color="accent">mdi-school</v-icon>
+            <span class="font-weight-bold">Skills in Development</span>
           </v-card-title>
-          <v-divider></v-divider>
-          <v-card-text v-if="skillsStore.skills.length === 0" class="text-center text-medium-emphasis">
+          <v-divider class="mx-4"></v-divider>
+          <v-card-text v-if="skillsStore.skills.length === 0" class="text-center text-medium-emphasis pa-6">
             No skills added yet
           </v-card-text>
-          <v-list v-else>
+          <v-list v-else class="pa-2">
             <v-list-item
               v-for="skill in skillsStore.skills.slice(0, 5)"
               :key="skill.id"
               :to="`/skills`"
+              class="modern-list-item mb-2"
+              rounded="lg"
             >
               <template v-slot:prepend>
-                <v-avatar color="primary">
-                  <v-icon>mdi-bullseye-arrow</v-icon>
+                <v-avatar color="accent" size="48">
+                  <v-icon color="white">mdi-bullseye-arrow</v-icon>
                 </v-avatar>
               </template>
-              <v-list-item-title>{{ skill.name }}</v-list-item-title>
+              <v-list-item-title class="font-weight-medium">{{ skill.name }}</v-list-item-title>
               <v-list-item-subtitle>{{ skill.category }}</v-list-item-subtitle>
               <template v-slot:append>
-                <v-chip size="small">{{ skill.difficulty }}</v-chip>
+                <v-chip size="small" color="accent" variant="flat">{{ skill.difficulty }}</v-chip>
               </template>
             </v-list-item>
           </v-list>
@@ -413,4 +449,69 @@ const goToSkills = () => {
   router.push('/skills')
 }
 </script>
+
+<style scoped>
+.stat-card {
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+.stat-card-1 {
+  background: linear-gradient(135deg, #DC143C 0%, #C8102E 100%);
+}
+
+.stat-card-2 {
+  background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
+}
+
+.stat-card-3 {
+  background: linear-gradient(135deg, #DC143C 0%, #FF6B35 100%);
+}
+
+.stat-card-4 {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+}
+
+.modern-card {
+  border-radius: 16px;
+  border: 2px solid rgba(220, 20, 60, 0.25);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  background: white !important;
+}
+
+.modern-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 20, 60, 0.3) !important;
+  border-color: rgba(220, 20, 60, 0.5);
+}
+
+.modern-card-title {
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.15) 0%, rgba(255, 215, 0, 0.15) 100%);
+  padding: 16px 20px;
+  border-bottom: 3px solid rgba(220, 20, 60, 0.3);
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+.modern-list-item {
+  transition: all 0.2s ease;
+  border: 2px solid rgba(220, 20, 60, 0.2);
+  background: white !important;
+  margin-bottom: 8px;
+}
+
+.modern-list-item:hover {
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%) !important;
+  border-color: rgba(220, 20, 60, 0.5);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.2) !important;
+}
+</style>
 

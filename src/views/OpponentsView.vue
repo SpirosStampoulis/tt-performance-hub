@@ -2,7 +2,14 @@
   <v-container>
     <v-row class="mb-4">
       <v-col>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openOpponentDialog()">
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="openOpponentDialog()"
+          size="large"
+          rounded="lg"
+          elevation="2"
+        >
           Add Player
         </v-btn>
       </v-col>
@@ -23,40 +30,48 @@
 
     <v-row>
       <v-col v-for="opponent in filteredOpponents" :key="opponent.id" cols="12" md="6" lg="4">
-        <v-card hover @click="$router.push(`/opponents/${opponent.id}`)">
-          <v-card-text>
+        <v-card
+          class="opponent-card"
+          hover
+          elevation="4"
+          @click="$router.push(`/opponents/${opponent.id}`)"
+        >
+          <v-card-text class="pa-5">
             <v-row align="center">
               <v-col cols="auto">
-                <v-avatar size="80" :color="opponent.photoUrl ? undefined : 'primary'">
+                <v-avatar size="80" :color="opponent.photoUrl ? undefined : 'primary'" class="opponent-avatar">
                   <v-img v-if="opponent.photoUrl" :src="opponent.photoUrl"></v-img>
-                  <span v-else class="text-h5">{{ getInitials(opponent.name) }}</span>
+                  <span v-else class="text-h5 text-white font-weight-bold">{{ getInitials(opponent.name) }}</span>
                 </v-avatar>
               </v-col>
               <v-col>
-                <div class="text-h6">{{ opponent.name }}</div>
-                <div class="text-caption mt-2">{{ opponent.club || 'No team' }}</div>
-                <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.alphaRanking || opponent.topspinRanking" class="text-caption mt-1">
+                <div class="text-h6 font-weight-bold mb-2">{{ opponent.name }}</div>
+                <div class="text-caption mb-2">
+                  <v-chip size="x-small" color="secondary" variant="flat">{{ opponent.club || 'No team' }}</v-chip>
+                </div>
+                <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.alphaRanking || opponent.topspinRanking" class="text-caption mt-2 mb-2">
                   <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints" class="mb-1">
-                    <span v-if="opponent.mttaStartPosition" class="mr-2">MTTA Start: {{ opponent.mttaStartPosition }}</span>
-                    <span v-if="opponent.mttaCurrentPosition" class="mr-2">Current: {{ opponent.mttaCurrentPosition }}</span>
-                    <span v-if="opponent.mttaTotalPoints">Points: {{ opponent.mttaTotalPoints }}</span>
+                    <v-chip size="x-small" color="info" variant="flat" class="mr-1" v-if="opponent.mttaStartPosition">Start: {{ opponent.mttaStartPosition }}</v-chip>
+                    <v-chip size="x-small" color="info" variant="flat" class="mr-1" v-if="opponent.mttaCurrentPosition">Current: {{ opponent.mttaCurrentPosition }}</v-chip>
+                    <v-chip size="x-small" color="info" variant="flat" v-if="opponent.mttaTotalPoints">Points: {{ opponent.mttaTotalPoints }}</v-chip>
                   </div>
                   <div>
-                    <span v-if="opponent.alphaRanking" class="mr-2">Alpha: {{ opponent.alphaRanking }}</span>
-                    <span v-if="opponent.topspinRanking">Topspin: {{ opponent.topspinRanking }}</span>
+                    <v-chip size="x-small" color="warning" variant="flat" class="mr-1" v-if="opponent.alphaRanking">Alpha: {{ opponent.alphaRanking }}</v-chip>
+                    <v-chip size="x-small" color="warning" variant="flat" v-if="opponent.topspinRanking">Topspin: {{ opponent.topspinRanking }}</v-chip>
                   </div>
                 </div>
-                <div class="text-caption text-medium-emphasis">
+                <div class="text-caption text-medium-emphasis mt-2">
+                  <v-icon size="small" class="mr-1">mdi-trophy</v-icon>
                   {{ getMatchCount(opponent.id) }} matches
                 </div>
               </v-col>
             </v-row>
           </v-card-text>
-          <v-card-actions>
-            <v-btn icon="mdi-pencil" size="small" @click.stop="openOpponentDialog(opponent)"></v-btn>
-            <v-btn icon="mdi-delete" size="small" color="error" @click.stop="confirmDelete(opponent)"></v-btn>
+          <v-card-actions class="pa-4">
+            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openOpponentDialog(opponent)"></v-btn>
+            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(opponent)"></v-btn>
             <v-spacer></v-spacer>
-            <v-btn append-icon="mdi-arrow-right" variant="text">View Profile</v-btn>
+            <v-btn append-icon="mdi-arrow-right" variant="text" size="small">View Profile</v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -397,4 +412,25 @@ const getMatchCount = (opponentId) => {
   return matchesStore.getMatchesByOpponent(opponentId).length
 }
 </script>
+
+<style scoped>
+.opponent-card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  border: 3px solid rgba(220, 20, 60, 0.25);
+  background: white !important;
+}
+
+.opponent-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(220, 20, 60, 0.3) !important;
+  border-color: rgba(220, 20, 60, 0.6);
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.08) 0%, rgba(255, 215, 0, 0.08) 100%) !important;
+}
+
+.opponent-avatar {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  border: 3px solid rgba(99, 102, 241, 0.2);
+}
+</style>
 

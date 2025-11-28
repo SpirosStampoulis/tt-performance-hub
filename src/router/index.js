@@ -47,6 +47,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/teams',
+    name: 'Teams',
+    component: () => import('../views/TeamsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/opponents',
     name: 'Opponents',
     component: () => import('../views/OpponentsView.vue'),

@@ -1,14 +1,13 @@
 <template>
-  <v-container class="fill-height" fluid>
+  <v-container class="fill-height login-container" fluid>
     <v-row align="center" justify="center" class="fill-height">
       <v-col cols="12" sm="8" md="4">
-        <v-card>
-          <v-card-title class="text-h5 text-center pa-6">
-            <v-icon size="large" class="mr-2">mdi-table-tennis</v-icon>
-            TT Performance Hub
-          </v-card-title>
-          <v-card-subtitle class="text-center pb-4">Login Required</v-card-subtitle>
-          <v-divider></v-divider>
+        <v-card class="login-card" elevation="8">
+          <div class="login-header">
+            <v-icon size="48" color="white" class="mb-3">mdi-table-tennis</v-icon>
+            <div class="text-h4 text-white font-weight-bold mb-2">TT Performance Hub</div>
+            <div class="text-body-1 text-white text-opacity-90">Login to continue</div>
+          </div>
           <v-card-text class="pa-6">
             <v-form @submit.prevent="handleLogin" ref="loginForm">
               <v-text-field
@@ -20,6 +19,7 @@
                 :rules="[v => !!v || 'Email is required', v => /.+@.+\..+/.test(v) || 'Email must be valid']"
                 required
                 class="mb-4"
+                rounded="lg"
               ></v-text-field>
               <v-text-field
                 v-model="password"
@@ -30,8 +30,9 @@
                 :rules="[v => !!v || 'Password is required']"
                 required
                 class="mb-4"
+                rounded="lg"
               ></v-text-field>
-              <v-alert v-if="error" type="error" density="compact" class="mb-4">{{ error }}</v-alert>
+              <v-alert v-if="error" type="error" density="compact" class="mb-4" rounded="lg">{{ error }}</v-alert>
               <v-btn 
                 type="submit" 
                 color="primary" 
@@ -39,6 +40,8 @@
                 size="large"
                 :loading="loggingIn"
                 prepend-icon="mdi-login"
+                rounded="lg"
+                elevation="2"
               >
                 Login
               </v-btn>
@@ -79,4 +82,22 @@ const handleLogin = async () => {
   }
 }
 </script>
+
+<style scoped>
+.login-container {
+  background: linear-gradient(135deg, #DC143C 0%, #C8102E 50%, #FFD700 100%);
+  min-height: 100vh;
+}
+
+.login-card {
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.login-header {
+  background: linear-gradient(135deg, #DC143C 0%, #C8102E 50%, #FFD700 100%);
+  padding: 40px 32px;
+  text-align: center;
+}
+</style>
 

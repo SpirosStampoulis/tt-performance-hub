@@ -2,7 +2,14 @@
   <v-container>
     <v-row class="mb-4">
       <v-col>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openSkillDialog()">
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="openSkillDialog()"
+          size="large"
+          rounded="lg"
+          elevation="2"
+        >
           Add Skill
         </v-btn>
       </v-col>
@@ -10,29 +17,34 @@
 
     <v-row>
       <v-col cols="12">
-        <v-tabs v-model="selectedCategory" bg-color="primary">
-          <v-tab value="all">All Skills</v-tab>
-          <v-tab v-for="category in skillsStore.categories" :key="category" :value="category">
-            {{ category }}
-          </v-tab>
-        </v-tabs>
+        <v-card class="mb-4" elevation="2">
+          <v-tabs v-model="selectedCategory" bg-color="transparent" color="primary">
+            <v-tab value="all" class="font-weight-medium">All Skills</v-tab>
+            <v-tab v-for="category in skillsStore.categories" :key="category" :value="category" class="font-weight-medium">
+              {{ category }}
+            </v-tab>
+          </v-tabs>
+        </v-card>
       </v-col>
     </v-row>
 
     <v-row class="mt-4">
       <v-col v-for="skill in displayedSkills" :key="skill.id" cols="12" md="6" lg="4">
-        <v-card>
-          <v-card-title>
-            {{ skill.name }}
-            <v-spacer></v-spacer>
-            <v-chip size="small" :color="getDifficultyColor(skill.difficulty)">
-              {{ skill.difficulty }}
-            </v-chip>
+        <v-card class="skill-card" elevation="4">
+          <v-card-title class="skill-card-title">
+            <div class="d-flex align-center justify-space-between w-100">
+              <span class="font-weight-bold">{{ skill.name }}</span>
+              <v-chip size="small" :color="getDifficultyColor(skill.difficulty)" variant="flat">
+                {{ skill.difficulty }}
+              </v-chip>
+            </div>
           </v-card-title>
-          <v-card-subtitle>{{ skill.category }}</v-card-subtitle>
-          <v-card-text>
-            <div v-if="getCurrentRating(skill.id)" class="mb-3">
-              <div class="text-caption text-medium-emphasis mb-1">Current Rating</div>
+          <v-card-subtitle class="pa-4 pb-2">
+            <v-chip size="x-small" color="secondary" variant="flat">{{ skill.category }}</v-chip>
+          </v-card-subtitle>
+          <v-card-text class="pa-4">
+            <div v-if="getCurrentRating(skill.id)" class="mb-3 pa-3 rounded-lg" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);">
+              <div class="text-caption text-medium-emphasis mb-2 font-weight-medium">Current Rating</div>
               <div class="d-flex align-center">
                 <v-rating
                   :model-value="getCurrentRating(skill.id)"
@@ -40,12 +52,14 @@
                   size="small"
                   density="compact"
                   class="mr-2"
+                  color="warning"
                 ></v-rating>
-                <span class="text-body-2">{{ getCurrentRating(skill.id) }}/5</span>
+                <span class="text-body-2 font-weight-bold">{{ getCurrentRating(skill.id) }}/5</span>
                 <v-chip
                   v-if="getRatingTrend(skill.id)"
                   size="x-small"
                   :color="getRatingTrend(skill.id).isImproving ? 'success' : 'error'"
+                  variant="flat"
                   class="ml-2"
                 >
                   <v-icon size="x-small" class="mr-1">
@@ -55,22 +69,26 @@
                 </v-chip>
               </div>
             </div>
-            <div v-if="skill.notes" class="mb-2" style="max-height: 100px; overflow: hidden">
+            <div v-if="skill.notes" class="mb-3 text-body-2" style="max-height: 100px; overflow: hidden; color: rgba(0,0,0,0.7);">
               {{ skill.notes.substring(0, 150) }}{{ skill.notes.length > 150 ? '...' : '' }}
             </div>
-            <div v-if="skill.videoUrls && skill.videoUrls.length > 0" class="text-caption">
-              <v-icon size="small">mdi-video</v-icon> {{ skill.videoUrls.length }} tutorial(s)
-            </div>
-            <div v-if="skill.relatedSkills && skill.relatedSkills.length > 0" class="text-caption">
-              <v-icon size="small">mdi-link</v-icon> {{ skill.relatedSkills.length }} related skill(s)
+            <div class="d-flex flex-wrap ga-2">
+              <v-chip v-if="skill.videoUrls && skill.videoUrls.length > 0" size="x-small" color="info" variant="flat">
+                <v-icon size="x-small" class="mr-1">mdi-video</v-icon>
+                {{ skill.videoUrls.length }} tutorial(s)
+              </v-chip>
+              <v-chip v-if="skill.relatedSkills && skill.relatedSkills.length > 0" size="x-small" color="accent" variant="flat">
+                <v-icon size="x-small" class="mr-1">mdi-link</v-icon>
+                {{ skill.relatedSkills.length }} related
+              </v-chip>
             </div>
           </v-card-text>
-          <v-card-actions>
-            <v-btn icon="mdi-star" size="small" @click="openRatingDialog(skill)" color="primary"></v-btn>
-            <v-btn icon="mdi-pencil" size="small" @click="openSkillDialog(skill)"></v-btn>
-            <v-btn icon="mdi-delete" size="small" color="error" @click="confirmDelete(skill)"></v-btn>
+          <v-card-actions class="pa-4">
+            <v-btn icon="mdi-star" size="small" @click.stop="openRatingDialog(skill)" color="warning" variant="text"></v-btn>
+            <v-btn icon="mdi-pencil" size="small" @click.stop="openSkillDialog(skill)" variant="text"></v-btn>
+            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(skill)"></v-btn>
             <v-spacer></v-spacer>
-            <v-btn variant="text" @click="viewSkillDetail(skill)">View Details</v-btn>
+            <v-btn variant="text" size="small" @click.stop="viewSkillDetail(skill)">Details</v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -481,6 +499,27 @@ const getDifficultyLabel = (value) => {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+.skill-card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  border: 3px solid rgba(220, 20, 60, 0.25);
+  background: white !important;
+}
+
+.skill-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(220, 20, 60, 0.3) !important;
+  border-color: rgba(220, 20, 60, 0.6);
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.08) 0%, rgba(255, 215, 0, 0.08) 100%) !important;
+}
+
+.skill-card-title {
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.12) 0%, rgba(255, 215, 0, 0.12) 100%);
+  padding: 16px 20px;
+  border-bottom: 3px solid rgba(220, 20, 60, 0.3);
+  color: rgba(0, 0, 0, 0.87) !important;
 }
 </style>
 

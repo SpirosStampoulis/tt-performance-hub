@@ -2,7 +2,14 @@
   <v-container>
     <v-row class="mb-4">
       <v-col>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openTournamentDialog()">
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="openTournamentDialog()"
+          size="large"
+          rounded="lg"
+          elevation="2"
+        >
           Add Tournament
         </v-btn>
       </v-col>
@@ -33,36 +40,44 @@
 
     <v-row>
       <v-col v-for="tournament in filteredTournaments" :key="tournament.id" cols="12" md="6" lg="4">
-        <v-card>
-          <v-card-title>
-            {{ tournament.name }}
-            <v-chip size="small" class="ml-2" :color="tournament.type === 'League' ? 'primary' : 'secondary'">
-              {{ tournament.type }}
-            </v-chip>
-            <v-chip v-if="tournament.isDefault" size="small" color="success" class="ml-2" prepend-icon="mdi-star">
-              Default
-            </v-chip>
+        <v-card class="tournament-card" elevation="4" :class="tournament.type === 'League' ? 'league-card' : 'tournament-type-card'">
+          <v-card-title class="tournament-card-title">
+            <div class="d-flex align-center flex-wrap">
+              <v-icon :color="tournament.type === 'League' ? 'primary' : 'warning'" size="24" class="mr-2">mdi-tournament</v-icon>
+              <span class="font-weight-bold">{{ tournament.name }}</span>
+            </div>
+            <div class="mt-2">
+              <v-chip size="small" class="mr-2" :color="tournament.type === 'League' ? 'primary' : 'warning'" variant="flat">
+                {{ tournament.type }}
+              </v-chip>
+              <v-chip v-if="tournament.isDefault" size="small" color="warning" variant="flat" prepend-icon="mdi-star">
+                Default
+              </v-chip>
+            </div>
           </v-card-title>
-          <v-card-subtitle>
-            <v-icon size="small">mdi-calendar</v-icon> {{ tournament.year }}
-          </v-card-subtitle>
-          <v-card-text>
-            <div class="text-caption">
-              <v-icon size="small">mdi-trophy</v-icon> {{ getMatchCount(tournament.id) }} matches
+          <v-card-text class="pa-4">
+            <div class="d-flex align-center mb-2">
+              <v-icon size="small" color="primary" class="mr-2">mdi-calendar</v-icon>
+              <span class="text-body-1 font-weight-medium">{{ tournament.year }}</span>
+            </div>
+            <div class="d-flex align-center">
+              <v-icon size="small" color="warning" class="mr-2">mdi-trophy</v-icon>
+              <span class="text-body-2">{{ getMatchCount(tournament.id) }} matches</span>
             </div>
           </v-card-text>
-          <v-card-actions>
-            <v-btn icon="mdi-pencil" size="small" @click="openTournamentDialog(tournament)"></v-btn>
-            <v-btn icon="mdi-delete" size="small" color="error" @click="confirmDelete(tournament)"></v-btn>
+          <v-card-actions class="pa-4 pt-0">
+            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openTournamentDialog(tournament)"></v-btn>
+            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(tournament)"></v-btn>
             <v-spacer></v-spacer>
-            <v-btn variant="text" @click="viewMatches(tournament)">View Matches</v-btn>
+            <v-btn variant="text" size="small" @click.stop="viewMatches(tournament)">View Matches</v-btn>
             <v-btn 
               v-if="tournament.type === 'Tournament'" 
-              variant="text" 
+              variant="flat" 
               color="primary"
-              @click="manageTournament(tournament)"
+              size="small"
+              @click.stop="manageTournament(tournament)"
             >
-              Manage Tournament
+              Manage
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -301,4 +316,50 @@ const manageTournament = (tournament) => {
   router.push({ path: '/tournaments/manage', query: { id: tournament.id } })
 }
 </script>
+
+<style scoped>
+.tournament-card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  border: 3px solid transparent;
+  background: white !important;
+}
+
+.tournament-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.25) !important;
+}
+
+.league-card {
+  border-left: 5px solid #DC143C;
+  border-color: rgba(220, 20, 60, 0.4);
+  background: white !important;
+}
+
+.league-card:hover {
+  border-color: #DC143C;
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.1) 0%, rgba(200, 16, 46, 0.1) 100%) !important;
+  box-shadow: 0 12px 32px rgba(220, 20, 60, 0.3) !important;
+}
+
+.tournament-type-card {
+  border-left: 5px solid #FFD700;
+  border-color: rgba(255, 215, 0, 0.4);
+  background: white !important;
+}
+
+.tournament-type-card:hover {
+  border-color: #FFD700;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%) !important;
+  box-shadow: 0 12px 32px rgba(255, 215, 0, 0.3) !important;
+}
+
+.tournament-card-title {
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.12) 0%, rgba(255, 215, 0, 0.12) 100%);
+  padding: 20px;
+  border-bottom: 3px solid rgba(220, 20, 60, 0.25);
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+</style>
 

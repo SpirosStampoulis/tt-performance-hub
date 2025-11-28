@@ -30,6 +30,78 @@
 
     <v-row v-if="selectedTournament">
       <v-col cols="12" md="8" :order-md="1" :order="2">
+        <v-card class="mb-4" v-if="!isSimpleLeague && tournamentTeams.length > 0">
+          <v-card-title>
+            <v-icon class="mr-2">mdi-podium</v-icon>
+            Standings
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text>
+            <v-table density="compact" class="standings-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Pos</th>
+                  <th class="text-left">Team</th>
+                  <th class="text-center">P</th>
+                  <th class="text-center">W</th>
+                  <th class="text-center">L</th>
+                  <th class="text-center">MD</th>
+                  <th class="text-center">Pts</th>
+                  <th class="text-center">Last 5</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="(team, index) in standings" 
+                  :key="team.id" 
+                  :class="[
+                    { 'bg-primary-lighten-4': team.isMyTeam },
+                    team.positionClass
+                  ]"
+                >
+                  <td>
+                    <div class="d-flex align-center">
+                      <span>{{ index + 1 }}</span>
+                      <v-chip 
+                        v-if="team.positionLabel" 
+                        :color="getPositionChipColor(team.positionClass)" 
+                        size="x-small" 
+                        variant="flat"
+                        class="ml-2"
+                      >
+                        {{ team.positionLabel }}
+                      </v-chip>
+                    </div>
+                  </td>
+                  <td>
+                    <a @click="viewTeamMatches(team)" style="cursor: pointer; text-decoration: none; color: inherit;">
+                      {{ team.name }}
+                    </a>
+                  </td>
+                  <td class="text-center">{{ team.played }}</td>
+                  <td class="text-center">{{ team.won }}</td>
+                  <td class="text-center">{{ team.lost }}</td>
+                  <td class="text-center" :class="team.matchDifference > 0 ? 'text-success' : team.matchDifference < 0 ? 'text-error' : ''">
+                    {{ team.matchDifference > 0 ? '+' : '' }}{{ team.matchDifference }}
+                  </td>
+                  <td class="text-center"><strong>{{ team.points }}</strong></td>
+                  <td class="text-center">
+                    <div class="last-five-matches">
+                      <span 
+                        v-for="(result, idx) in team.lastFive.split(' ')" 
+                        :key="idx"
+                        :class="['match-result', result === 'W' ? 'win' : result === 'L' ? 'loss' : '']"
+                      >
+                        {{ result }}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+
         <v-card class="mb-4" v-if="upcomingMatches.length > 0">
           <v-card-title>
             <v-icon class="mr-2">mdi-clock-outline</v-icon>
@@ -184,47 +256,6 @@
       </v-col>
 
       <v-col cols="12" md="4" v-if="!isSimpleLeague" :order-md="2" :order="1">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-podium</v-icon>
-            Standings
-          </v-card-title>
-          <v-divider></v-divider>
-          <v-card-text v-if="tournamentTeams.length === 0" class="text-center text-medium-emphasis">
-            No teams added yet
-          </v-card-text>
-          <v-table v-else density="compact">
-            <thead>
-              <tr>
-                <th class="text-left">Pos</th>
-                <th class="text-left">Team</th>
-                <th class="text-center">P</th>
-                <th class="text-center">W</th>
-                <th class="text-center">L</th>
-                <th class="text-center">MD</th>
-                <th class="text-center">Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(team, index) in standings" :key="team.id" :class="{ 'bg-primary-lighten-4': team.isMyTeam }">
-                <td>{{ index + 1 }}</td>
-                <td>
-                  <a @click="viewTeamMatches(team)" style="cursor: pointer; text-decoration: none; color: inherit;">
-                    {{ team.name }}
-                  </a>
-                </td>
-                <td class="text-center">{{ team.played }}</td>
-                <td class="text-center">{{ team.won }}</td>
-                <td class="text-center">{{ team.lost }}</td>
-                <td class="text-center" :class="team.matchDifference > 0 ? 'text-success' : team.matchDifference < 0 ? 'text-error' : ''">
-                  {{ team.matchDifference > 0 ? '+' : '' }}{{ team.matchDifference }}
-                </td>
-                <td class="text-center"><strong>{{ team.points }}</strong></td>
-              </tr>
-            </tbody>
-          </v-table>
-        </v-card>
-
       </v-col>
     </v-row>
 
@@ -325,10 +356,15 @@
 
     <v-dialog v-model="showTeamMatchDetail" max-width="600">
       <v-card v-if="selectedTeamMatch">
-        <v-card-title>
-          Team Match Details
-          <v-spacer></v-spacer>
-          <v-btn icon="mdi-close" variant="text" @click="showTeamMatchDetail = false"></v-btn>
+        <v-card-title class="dialog-header">
+          <span>Team Match Details</span>
+          <v-btn 
+            icon="mdi-close" 
+            variant="text" 
+            size="small"
+            class="dialog-close-btn"
+            @click="showTeamMatchDetail = false"
+          ></v-btn>
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>
@@ -492,11 +528,18 @@
 
     <v-dialog v-model="showTeamMatchesDialog" max-width="700">
       <v-card v-if="selectedTeamForMatches">
-        <v-card-title>
-          <v-icon class="mr-2">mdi-shield-account</v-icon>
-          {{ selectedTeamForMatches.name }} - Team Matches
-          <v-spacer></v-spacer>
-          <v-btn icon="mdi-close" variant="text" @click="showTeamMatchesDialog = false"></v-btn>
+        <v-card-title class="dialog-header">
+          <div class="d-flex align-center">
+            <v-icon class="mr-2">mdi-shield-account</v-icon>
+            <span>{{ selectedTeamForMatches.name }} - Team Matches</span>
+          </div>
+          <v-btn 
+            icon="mdi-close" 
+            variant="text" 
+            size="small"
+            class="dialog-close-btn"
+            @click="showTeamMatchesDialog = false"
+          ></v-btn>
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>
@@ -936,7 +979,8 @@ const standings = computed(() => {
       lost: 0,
       points: 0,
       matchesWon: 0,
-      matchesLost: 0
+      matchesLost: 0,
+      recentMatches: []
     }
   })
   
@@ -956,6 +1000,10 @@ const standings = computed(() => {
       } else {
         teamStats[team1Id].lost++
       }
+      teamStats[team1Id].recentMatches.push({
+        date: tm.date instanceof Date ? tm.date : (tm.date?.toDate ? tm.date.toDate() : new Date(tm.date || 0)),
+        result: team1Score >= 4 ? 'W' : 'L'
+      })
     }
     
     if (teamStats[team2Id]) {
@@ -968,24 +1016,73 @@ const standings = computed(() => {
       } else {
         teamStats[team2Id].lost++
       }
+      teamStats[team2Id].recentMatches.push({
+        date: tm.date instanceof Date ? tm.date : (tm.date?.toDate ? tm.date.toDate() : new Date(tm.date || 0)),
+        result: team2Score >= 4 ? 'W' : 'L'
+      })
     }
   })
   
-  return Object.values(teamStats).map(team => ({
+  const sorted = Object.values(teamStats).map(team => ({
     ...team,
     matchDifference: team.matchesWon - team.matchesLost
   })).sort((a, b) => {
-    // Sort by points first, then by match difference
     if (b.points !== a.points) {
       return b.points - a.points
     }
     return b.matchDifference - a.matchDifference
+  })
+  
+  return sorted.map((team, index) => {
+    const position = index + 1
+    const totalTeams = sorted.length
+    let positionClass = ''
+    let positionLabel = ''
+    
+    if (position <= 2) {
+      positionClass = 'promoted'
+      positionLabel = 'Promoted'
+    } else if (position === 3) {
+      positionClass = 'playoff'
+      positionLabel = 'Playoff'
+    } else if (position === totalTeams - 2) {
+      positionClass = 'playout'
+      positionLabel = 'Playout'
+    } else if (position === totalTeams - 1) {
+      positionClass = 'demoted'
+      positionLabel = 'Demoted'
+    } else if (position === totalTeams) {
+      positionClass = 'demoted'
+      positionLabel = 'Demoted'
+    }
+    
+    const sortedRecent = team.recentMatches
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 5)
+      .map(m => m.result)
+    
+    return {
+      ...team,
+      positionClass,
+      positionLabel,
+      lastFive: sortedRecent.length > 0 ? sortedRecent.join(' ') : '-'
+    }
   })
 })
 
 const getTeamName = (teamId) => {
   const team = tournamentTeams.value.find(t => t.id === teamId)
   return team ? team.name : 'Unknown'
+}
+
+const getPositionChipColor = (positionClass) => {
+  const colors = {
+    'promoted': 'success',
+    'playoff': 'warning',
+    'playout': 'warning',
+    'demoted': 'error'
+  }
+  return colors[positionClass] || 'default'
 }
 
 const getPlayerName = (playerId) => {
@@ -1927,4 +2024,75 @@ const cleanupDuplicates = async () => {
   }
 }
 </script>
+
+<style scoped>
+.standings-table .promoted {
+  background-color: rgba(76, 175, 80, 0.15) !important;
+  border-left: 4px solid #4CAF50;
+}
+
+.standings-table .playoff {
+  background-color: rgba(255, 193, 7, 0.15) !important;
+  border-left: 4px solid #FFC107;
+}
+
+.standings-table .playout {
+  background-color: rgba(255, 193, 7, 0.15) !important;
+  border-left: 4px solid #FFC107;
+}
+
+.standings-table .demoted {
+  background-color: rgba(244, 67, 54, 0.15) !important;
+  border-left: 4px solid #F44336;
+}
+
+.last-five-matches {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+}
+
+.match-result {
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.match-result.win {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.match-result.loss {
+  background-color: #F44336;
+  color: white;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  padding: 16px 20px;
+}
+
+.dialog-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: rgba(0, 0, 0, 0.6) !important;
+  transition: all 0.3s ease;
+}
+
+.dialog-close-btn:hover {
+  color: #DC143C !important;
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  transform: scale(1.1);
+}
+</style>
 

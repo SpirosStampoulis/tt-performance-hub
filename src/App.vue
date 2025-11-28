@@ -465,4 +465,55 @@ const handleLogout = async () => {
   min-height: auto !important;
   height: auto !important;
 }
+
+/* Dialog close button styling */
+.v-dialog .v-card-title {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.v-dialog .v-card-title .v-btn.dialog-close-btn,
+.v-dialog .v-card-title .v-btn[icon="mdi-close"] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: rgba(0, 0, 0, 0.6) !important;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.v-dialog .v-card-title .v-btn.dialog-close-btn:hover,
+.v-dialog .v-card-title .v-btn[icon="mdi-close"]:hover {
+  color: #DC143C !important;
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  transform: scale(1.1);
+}
+
+.v-dialog .v-card-title.dialog-header {
+  padding-right: 48px;
+}
+
+.v-dialog .v-toolbar.dialog-header {
+  position: relative;
+  padding-right: 48px;
+}
+
+.v-dialog .v-toolbar .v-btn.dialog-close-btn,
+.v-dialog .v-toolbar .v-btn[icon="mdi-close"] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: rgba(0, 0, 0, 0.6) !important;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.v-dialog .v-toolbar .v-btn.dialog-close-btn:hover,
+.v-dialog .v-toolbar .v-btn[icon="mdi-close"]:hover {
+  color: #DC143C !important;
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  transform: scale(1.1);
+}
 </style>

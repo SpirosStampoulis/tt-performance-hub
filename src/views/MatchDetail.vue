@@ -223,9 +223,15 @@
 
     <v-dialog v-model="galleryDialog" fullscreen>
       <v-card>
-        <v-toolbar>
-          <v-btn icon="mdi-close" @click="galleryDialog = false"></v-btn>
+        <v-toolbar class="dialog-header">
           <v-toolbar-title>Photo Gallery</v-toolbar-title>
+          <v-btn 
+            icon="mdi-close" 
+            variant="text"
+            size="small"
+            class="dialog-close-btn"
+            @click="galleryDialog = false"
+          ></v-btn>
         </v-toolbar>
         <v-card-text class="d-flex align-center justify-center" style="height: 100%">
           <v-img v-if="match.photos && match.photos[galleryIndex]" :src="match.photos[galleryIndex]" contain max-height="90vh"></v-img>

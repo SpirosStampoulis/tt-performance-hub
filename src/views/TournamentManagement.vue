@@ -212,10 +212,43 @@
         </v-card>
 
         <!-- Knockout Stages Section -->
-        <v-card v-if="knockoutMatches.length > 0">
+        <v-card v-if="knockoutMatches.length > 0 || (groups.length === 4 && groupMatches.length > 0)">
           <v-card-title>
             <v-icon class="mr-2">mdi-trophy-variant</v-icon>
             Knockout Stages
+            <v-spacer></v-spacer>
+            <v-btn 
+              v-if="groups.length === 4"
+              size="small" 
+              color="primary" 
+              prepend-icon="mdi-refresh"
+              @click="checkAndCreateNextRound"
+              :loading="isCreatingSemiFinals || isCreatingFinal"
+            >
+              Update Next Round
+            </v-btn>
+            <v-btn 
+              v-if="groups.length === 4 && knockoutMatches.filter(m => m.round === 'Quarter-Final').length >= 4"
+              size="small" 
+              color="success" 
+              prepend-icon="mdi-trophy"
+              @click="createSemiFinals"
+              :loading="isCreatingSemiFinals"
+              class="ml-2"
+            >
+              Create Semi-Finals
+            </v-btn>
+            <v-btn 
+              v-if="groups.length === 4 && knockoutMatches.filter(m => m.round === 'Semi-Final').length >= 2"
+              size="small" 
+              color="warning" 
+              prepend-icon="mdi-trophy-variant"
+              @click="createFinal"
+              :loading="isCreatingFinal"
+              class="ml-2"
+            >
+              Create Final
+            </v-btn>
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text>
@@ -629,6 +662,9 @@ const groupToDelete = ref(null)
 const showCreatePlayerDialog = ref(false)
 const creatingPlayer = ref(false)
 const playerForm = ref(null)
+const isCreatingKnockoutMatches = ref(false)
+const isCreatingSemiFinals = ref(false)
+const isCreatingFinal = ref(false)
 const newPlayer = ref({
   name: '',
   club: ''
@@ -854,6 +890,25 @@ const getMatchScore = (match) => {
   return `${player1Sets}-${player2Sets}`
 }
 
+const getMatchWinner = (match) => {
+  if (!match.scores || match.scores.length === 0) return null
+  
+  let player1Sets = 0
+  let player2Sets = 0
+  
+  match.scores.forEach(score => {
+    const p1Score = score.player1Score || score.myScore || 0
+    const p2Score = score.player2Score || score.oppScore || 0
+    if (p1Score && p2Score) {
+      if (p1Score > p2Score) player1Sets++
+      else if (p2Score > p1Score) player2Sets++
+    }
+  })
+  
+  if (player1Sets === player2Sets) return null
+  return player1Sets > player2Sets ? match.player1Id : match.player2Id
+}
+
 const createGroups = async () => {
   if (!tournament.value?.numberOfGroups) return
   
@@ -968,6 +1023,10 @@ const saveGroups = async () => {
   })
   
   tournament.value = await tournamentsStore.getTournament(tournament.value.id)
+  
+  if (groups.value.length === 4) {
+    await createKnockoutMatchesFor4Groups()
+  }
 }
 
 const scheduleGroupMatch = (groupId) => {
@@ -987,6 +1046,381 @@ const scheduleGroupMatch = (groupId) => {
 
 const viewMatch = (match) => {
   router.push(`/matches/${match.id}`)
+}
+
+const createKnockoutMatchesFor4Groups = async () => {
+  if (!tournament.value?.id || groups.value.length !== 4) return
+  
+  if (isCreatingKnockoutMatches.value) return
+  
+  isCreatingKnockoutMatches.value = true
+  
+  try {
+    await matchesStore.fetchMatches()
+    
+    const existingQuarterFinals = allTournamentMatches.value.filter(m => m.round === 'Quarter-Final')
+    
+    if (existingQuarterFinals.length >= 4) {
+      isCreatingKnockoutMatches.value = false
+      return
+    }
+    
+    const groupNames = ['A', 'B', 'C', 'D']
+    const sortedGroups = groups.value
+      .filter(g => groupNames.includes(g.name))
+      .sort((a, b) => groupNames.indexOf(a.name) - groupNames.indexOf(b.name))
+    
+    if (sortedGroups.length !== 4) {
+      isCreatingKnockoutMatches.value = false
+      return
+    }
+    
+    const advancingPlayers = {}
+    
+    for (const group of sortedGroups) {
+      const standings = getGroupStandings(group.id)
+      const playersAdvancing = tournament.value?.playersAdvancingPerGroup || 2
+      
+      if (standings.length < playersAdvancing) {
+        isCreatingKnockoutMatches.value = false
+        return
+      }
+      
+      advancingPlayers[group.name] = {
+        first: standings[0]?.id,
+        second: standings[1]?.id
+      }
+    }
+    
+    const quarterFinalMatches = [
+      {
+        player1Id: advancingPlayers.A.second,
+        player2Id: advancingPlayers.D.first,
+        round: 'Quarter-Final'
+      },
+      {
+        player1Id: advancingPlayers.A.first,
+        player2Id: advancingPlayers.D.second,
+        round: 'Quarter-Final'
+      },
+      {
+        player1Id: advancingPlayers.B.first,
+        player2Id: advancingPlayers.C.second,
+        round: 'Quarter-Final'
+      },
+      {
+        player1Id: advancingPlayers.B.second,
+        player2Id: advancingPlayers.C.first,
+        round: 'Quarter-Final'
+      }
+    ]
+    
+    const getTournamentDate = () => {
+      const existingMatch = allTournamentMatches.value.find(m => m.date)
+      if (existingMatch && existingMatch.date) {
+        const matchDate = existingMatch.date instanceof Date 
+          ? existingMatch.date 
+          : (existingMatch.date?.toDate ? existingMatch.date.toDate() : new Date(existingMatch.date))
+        return matchDate
+      }
+      const today = new Date()
+      today.setHours(12, 0, 0, 0)
+      return today
+    }
+    
+    const tournamentDate = getTournamentDate()
+    
+    for (const matchData of quarterFinalMatches) {
+      if (!matchData.player1Id || !matchData.player2Id) continue
+      
+      await matchesStore.fetchMatches()
+      const currentMatches = allTournamentMatches.value.filter(m => m.round === 'Quarter-Final')
+      
+      const matchExists = currentMatches.some(existing => {
+        const samePlayers = (
+          (existing.player1Id === matchData.player1Id && existing.player2Id === matchData.player2Id) ||
+          (existing.player1Id === matchData.player2Id && existing.player2Id === matchData.player1Id)
+        )
+        return samePlayers && existing.round === 'Quarter-Final'
+      })
+      
+      if (matchExists) continue
+      
+      if (currentMatches.length >= 4) break
+      
+      try {
+        await matchesStore.addMatch({
+          tournamentId: tournament.value.id,
+          player1Id: matchData.player1Id,
+          player2Id: matchData.player2Id,
+          round: matchData.round,
+          date: today,
+          status: 'scheduled',
+          scores: []
+        })
+        
+        await matchesStore.fetchMatches()
+      } catch (error) {
+        console.error('Error creating knockout match:', error)
+      }
+    }
+  } finally {
+    isCreatingKnockoutMatches.value = false
+  }
+}
+
+const createSemiFinals = async () => {
+  if (!tournament.value?.id) return
+  
+  if (isCreatingSemiFinals.value) return
+  
+  isCreatingSemiFinals.value = true
+  
+  try {
+    await matchesStore.fetchMatches()
+    
+    const existingSemiFinals = allTournamentMatches.value.filter(m => m.round === 'Semi-Final')
+    
+    if (existingSemiFinals.length >= 2) {
+      isCreatingSemiFinals.value = false
+      return
+    }
+    
+    const quarterFinals = allTournamentMatches.value.filter(m => m.round === 'Quarter-Final')
+    
+    if (quarterFinals.length < 4) {
+      isCreatingSemiFinals.value = false
+      return
+    }
+    
+    const groupNames = ['A', 'B', 'C', 'D']
+    const sortedGroups = groups.value
+      .filter(g => groupNames.includes(g.name))
+      .sort((a, b) => groupNames.indexOf(a.name) - groupNames.indexOf(b.name))
+    
+    if (sortedGroups.length !== 4) {
+      isCreatingSemiFinals.value = false
+      return
+    }
+    
+    const advancingPlayers = {}
+    
+    for (const group of sortedGroups) {
+      const standings = getGroupStandings(group.id)
+      const playersAdvancing = tournament.value?.playersAdvancingPerGroup || 2
+      
+      if (standings.length < playersAdvancing) {
+        isCreatingSemiFinals.value = false
+        return
+      }
+      
+      advancingPlayers[group.name] = {
+        first: standings[0]?.id,
+        second: standings[1]?.id
+      }
+    }
+    
+    const findQuarterFinal = (player1Id, player2Id) => {
+      return quarterFinals.find(m => {
+        const samePlayers = (
+          (m.player1Id === player1Id && m.player2Id === player2Id) ||
+          (m.player1Id === player2Id && m.player2Id === player1Id)
+        )
+        return samePlayers
+      })
+    }
+    
+    const qf1 = findQuarterFinal(advancingPlayers.A.second, advancingPlayers.D.first)
+    const qf2 = findQuarterFinal(advancingPlayers.B.first, advancingPlayers.C.second)
+    const qf3 = findQuarterFinal(advancingPlayers.A.first, advancingPlayers.D.second)
+    const qf4 = findQuarterFinal(advancingPlayers.B.second, advancingPlayers.C.first)
+    
+    if (!qf1 || !qf2 || !qf3 || !qf4) {
+      isCreatingSemiFinals.value = false
+      return
+    }
+    
+    const winner1 = getMatchWinner(qf1)
+    const winner2 = getMatchWinner(qf2)
+    const winner3 = getMatchWinner(qf3)
+    const winner4 = getMatchWinner(qf4)
+    
+    if (!winner1 || !winner2 || !winner3 || !winner4) {
+      isCreatingSemiFinals.value = false
+      return
+    }
+    
+    const semiFinalMatches = [
+      {
+        player1Id: winner1,
+        player2Id: winner2,
+        round: 'Semi-Final'
+      },
+      {
+        player1Id: winner3,
+        player2Id: winner4,
+        round: 'Semi-Final'
+      }
+    ]
+    
+    const getTournamentDate = () => {
+      const existingMatch = allTournamentMatches.value.find(m => m.date)
+      if (existingMatch && existingMatch.date) {
+        const matchDate = existingMatch.date instanceof Date 
+          ? existingMatch.date 
+          : (existingMatch.date?.toDate ? existingMatch.date.toDate() : new Date(existingMatch.date))
+        return matchDate
+      }
+      const today = new Date()
+      today.setHours(12, 0, 0, 0)
+      return today
+    }
+    
+    const tournamentDate = getTournamentDate()
+    
+    let created = 0
+    
+    for (const matchData of semiFinalMatches) {
+      if (!matchData.player1Id || !matchData.player2Id) continue
+      
+      await matchesStore.fetchMatches()
+      const currentMatches = allTournamentMatches.value.filter(m => m.round === 'Semi-Final')
+      
+      const matchExists = currentMatches.some(existing => {
+        const samePlayers = (
+          (existing.player1Id === matchData.player1Id && existing.player2Id === matchData.player2Id) ||
+          (existing.player1Id === matchData.player2Id && existing.player2Id === matchData.player1Id)
+        )
+        return samePlayers && existing.round === 'Semi-Final'
+      })
+      
+      if (matchExists) continue
+      
+      if (currentMatches.length >= 2) break
+      
+      try {
+        await matchesStore.addMatch({
+          tournamentId: tournament.value.id,
+          player1Id: matchData.player1Id,
+          player2Id: matchData.player2Id,
+          round: matchData.round,
+          date: tournamentDate,
+          status: 'scheduled',
+          scores: []
+        })
+        await matchesStore.fetchMatches()
+        created++
+      } catch (error) {
+        console.error('Error creating semi-final match:', error)
+      }
+    }
+    
+  } finally {
+    isCreatingSemiFinals.value = false
+  }
+}
+
+const createFinal = async () => {
+  if (!tournament.value?.id) return
+  
+  if (isCreatingFinal.value) return
+  
+  isCreatingFinal.value = true
+  
+  try {
+    await matchesStore.fetchMatches()
+    
+    const existingFinal = allTournamentMatches.value.filter(m => m.round === 'Final')
+    
+    if (existingFinal.length >= 1) {
+      isCreatingFinal.value = false
+      return
+    }
+    
+    const semiFinals = allTournamentMatches.value
+      .filter(m => m.round === 'Semi-Final')
+      .sort((a, b) => {
+        const dateA = a.date instanceof Date ? a.date : (a.date?.toDate ? a.date.toDate() : new Date(0))
+        const dateB = b.date instanceof Date ? b.date : (b.date?.toDate ? b.date.toDate() : new Date(0))
+        return dateA - dateB
+      })
+    
+    if (semiFinals.length !== 2) {
+      isCreatingFinal.value = false
+      return
+    }
+    
+    const winners = semiFinals.map(match => getMatchWinner(match))
+    
+    if (winners.some(w => !w)) {
+      isCreatingFinal.value = false
+      return
+    }
+    
+    await matchesStore.fetchMatches()
+    const currentFinal = allTournamentMatches.value.filter(m => m.round === 'Final')
+    
+    if (currentFinal.length >= 1) {
+      isCreatingFinal.value = false
+      return
+    }
+    
+    const matchExists = currentFinal.some(existing => {
+      const samePlayers = (
+        (existing.player1Id === winners[0] && existing.player2Id === winners[1]) ||
+        (existing.player1Id === winners[1] && existing.player2Id === winners[0])
+      )
+      return samePlayers && existing.round === 'Final'
+    })
+    
+    if (matchExists) {
+      isCreatingFinal.value = false
+      return
+    }
+    
+    const getTournamentDate = () => {
+      const existingMatch = allTournamentMatches.value.find(m => m.date)
+      if (existingMatch && existingMatch.date) {
+        const matchDate = existingMatch.date instanceof Date 
+          ? existingMatch.date 
+          : (existingMatch.date?.toDate ? existingMatch.date.toDate() : new Date(existingMatch.date))
+        return matchDate
+      }
+      const today = new Date()
+      today.setHours(12, 0, 0, 0)
+      return today
+    }
+    
+    const tournamentDate = getTournamentDate()
+    
+    try {
+      await matchesStore.addMatch({
+        tournamentId: tournament.value.id,
+        player1Id: winners[0],
+        player2Id: winners[1],
+        round: 'Final',
+        date: tournamentDate,
+        status: 'scheduled',
+        scores: []
+      })
+      await matchesStore.fetchMatches()
+    } catch (error) {
+      console.error('Error creating final match:', error)
+    }
+  } finally {
+    isCreatingFinal.value = false
+  }
+}
+
+const checkAndCreateNextRound = async () => {
+  if (!tournament.value?.id) return
+  
+  if (isCreatingSemiFinals.value || isCreatingFinal.value) return
+  
+  await matchesStore.fetchMatches()
+  
+  await createSemiFinals()
+  await createFinal()
 }
 
 const loadTournament = async (tournamentId) => {

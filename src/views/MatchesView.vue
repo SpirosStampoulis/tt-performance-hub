@@ -184,6 +184,7 @@
               label="Round/Group"
               variant="outlined"
               :rules="[v => !!v || 'Round is required']"
+              clearable
             ></v-autocomplete>
             
             <v-text-field
@@ -1130,9 +1131,40 @@ const availableGroupRounds = computed(() => {
   if (!isTournamentMatch.value || !formData.value.tournamentId) return []
   
   const tournament = tournamentsStore.tournaments.find(t => t.id === formData.value.tournamentId)
-  if (!tournament?.groups) return []
+  const rounds = new Set()
   
-  return tournament.groups.map(g => `Group ${g.name}`)
+  if (tournament?.groups) {
+    tournament.groups.forEach(g => {
+      rounds.add(`Group ${g.name}`)
+    })
+  }
+  
+  const knockoutRounds = ['Quarter-Final', 'Semi-Final', 'Final']
+  knockoutRounds.forEach(round => {
+    rounds.add(round)
+  })
+  
+  const existingRounds = matchesStore.matches
+    .filter(m => m.tournamentId === formData.value.tournamentId && m.round)
+    .map(m => m.round)
+  
+  existingRounds.forEach(round => {
+    if (round && !round.startsWith('Group ')) {
+      rounds.add(round)
+    }
+  })
+  
+  return Array.from(rounds).sort((a, b) => {
+    const knockoutOrder = ['Quarter-Final', 'Semi-Final', 'Final']
+    const aIndex = knockoutOrder.indexOf(a)
+    const bIndex = knockoutOrder.indexOf(b)
+    
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+    if (aIndex !== -1) return 1
+    if (bIndex !== -1) return -1
+    
+    return a.localeCompare(b)
+  })
 })
 
 const tournamentTeams = computed(() => {

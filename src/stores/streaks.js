@@ -13,11 +13,17 @@ import {
 } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import { useMatchesStore } from './matches'
+import { useTournamentsStore } from './tournaments'
+import { useOpponentsStore } from './opponents'
 
 export const useStreaksStore = defineStore('streaks', () => {
   const milestones = ref([])
   const loading = ref(false)
   const matchesStore = useMatchesStore()
+  const tournamentsStore = useTournamentsStore()
+  const opponentsStore = useOpponentsStore()
+  
+  const PLAYER_NAME = 'Spiros Stampoulis'
 
   const fetchMilestones = async () => {
     loading.value = true
@@ -201,6 +207,9 @@ export const useStreaksStore = defineStore('streaks', () => {
   })
 
   const checkMilestones = async () => {
+    await matchesStore.fetchMatches()
+    await fetchMilestones()
+    
     const records = personalRecords.value
     const newMilestones = []
 
@@ -251,6 +260,9 @@ export const useStreaksStore = defineStore('streaks', () => {
       }
     }
 
+    await checkTournamentGroupTop4()
+    await checkTournamentFinalWins()
+
     for (const milestone of newMilestones) {
       const exists = milestones.value.some(m => 
         m.type === milestone.type && 
@@ -260,6 +272,226 @@ export const useStreaksStore = defineStore('streaks', () => {
       
       if (!exists) {
         await addMilestone(milestone)
+      }
+    }
+  }
+
+  const getGroupStandings = (tournamentId, group) => {
+    const groupMatches = matchesStore.matches.filter(m => 
+      m.tournamentId === tournamentId &&
+      m.round === `Group ${group.name}`
+    )
+    
+    const playerIds = group.players || []
+    const stats = {}
+    
+    playerIds.forEach(playerId => {
+      stats[playerId] = {
+        id: playerId,
+        played: 0,
+        won: 0,
+        lost: 0,
+        points: 0,
+        setsWon: 0,
+        setsLost: 0
+      }
+    })
+    
+    groupMatches.forEach(match => {
+      if (!match.scores || match.scores.length === 0) return
+      
+      let player1Sets = 0
+      let player2Sets = 0
+      
+      match.scores.forEach(score => {
+        const p1Score = score.player1Score || score.myScore || 0
+        const p2Score = score.player2Score || score.oppScore || 0
+        if (p1Score && p2Score) {
+          if (p1Score > p2Score) player1Sets++
+          else if (p2Score > p1Score) player2Sets++
+        }
+      })
+      
+      const p1Id = match.player1Id
+      const p2Id = match.player2Id
+      
+      if (stats[p1Id]) {
+        stats[p1Id].played++
+        stats[p1Id].setsWon += player1Sets
+        stats[p1Id].setsLost += player2Sets
+        if (player1Sets > player2Sets) {
+          stats[p1Id].won++
+          stats[p1Id].points += 3
+        } else {
+          stats[p1Id].lost++
+        }
+      }
+      
+      if (stats[p2Id]) {
+        stats[p2Id].played++
+        stats[p2Id].setsWon += player2Sets
+        stats[p2Id].setsLost += player1Sets
+        if (player2Sets > player1Sets) {
+          stats[p2Id].won++
+          stats[p2Id].points += 3
+        } else {
+          stats[p2Id].lost++
+        }
+      }
+    })
+    
+    return Object.values(stats)
+      .map(p => ({
+        ...p,
+        setDifference: p.setsWon - p.setsLost
+      }))
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points
+        return b.setDifference - a.setDifference
+      })
+  }
+
+  const hasScheduledMatches = (tournamentId) => {
+    const tournamentMatches = matchesStore.matches.filter(m => m.tournamentId === tournamentId)
+    return tournamentMatches.some(m => {
+      if (!m.scores || m.scores.length === 0) return true
+      const hasScores = m.scores.some(s => (s.player1Score || s.myScore) && (s.player2Score || s.oppScore))
+      return !hasScores
+    })
+  }
+
+  const checkTournamentGroupTop4 = async () => {
+    await tournamentsStore.fetchTournaments()
+    await opponentsStore.fetchOpponents()
+    await matchesStore.fetchMatches()
+    await fetchMilestones()
+    
+    const currentPlayer = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
+    if (!currentPlayer) {
+      console.log('Player not found:', PLAYER_NAME, 'Available players:', opponentsStore.opponents.map(o => o.name))
+      return
+    }
+    
+    const tournaments = tournamentsStore.tournaments.filter(t => 
+      t.type === 'Tournament' && t.groups && Array.isArray(t.groups) && t.groups.length > 0
+    )
+    
+    for (const tournament of tournaments) {
+      if (hasScheduledMatches(tournament.id)) {
+        continue
+      }
+      
+      for (const group of tournament.groups) {
+        const standings = getGroupStandings(tournament.id, group)
+        
+        if (standings.length === 0) continue
+        
+        const playerIndex = standings.findIndex(p => p.id === currentPlayer.id)
+        
+        if (playerIndex !== -1 && playerIndex < 4) {
+          const position = playerIndex + 1
+          
+          const existing = milestones.value.find(m => 
+            m.type === 'tournament_top4' &&
+            m.tournamentId === tournament.id &&
+            m.groupName === group.name &&
+            m.playerId === currentPlayer.id &&
+            m.position === position
+          )
+          
+          if (!existing) {
+            const tournamentName = tournament.name
+            const groupName = group.name
+            const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : '4th'
+            
+            await addMilestone({
+              type: 'tournament_top4',
+              title: `Top ${position} in ${tournamentName} - Group ${groupName}`,
+              description: `Finished ${positionText} place in Group ${groupName} of ${tournamentName}`,
+              category: 'achievement',
+              tournamentId: tournament.id,
+              tournamentName: tournamentName,
+              groupName: groupName,
+              playerId: currentPlayer.id,
+              position: position
+            })
+          }
+        }
+      }
+    }
+  }
+
+  const getMatchWinner = (match) => {
+    if (!match.scores || match.scores.length === 0) return null
+    
+    let player1Sets = 0
+    let player2Sets = 0
+    
+    match.scores.forEach(score => {
+      const p1Score = score.player1Score || score.myScore || 0
+      const p2Score = score.player2Score || score.oppScore || 0
+      if (p1Score && p2Score) {
+        if (p1Score > p2Score) player1Sets++
+        else if (p2Score > p1Score) player2Sets++
+      }
+    })
+    
+    if (player1Sets === player2Sets) return null
+    return player1Sets > player2Sets ? match.player1Id : match.player2Id
+  }
+
+  const checkTournamentFinalWins = async () => {
+    await tournamentsStore.fetchTournaments()
+    await opponentsStore.fetchOpponents()
+    await matchesStore.fetchMatches()
+    await fetchMilestones()
+    
+    const currentPlayer = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
+    if (!currentPlayer) {
+      console.log('Player not found for final check:', PLAYER_NAME)
+      return
+    }
+    
+    const finalMatches = matchesStore.matches.filter(m => 
+      m.round === 'Final' && 
+      m.scores && 
+      m.scores.length > 0 &&
+      (m.player1Id === currentPlayer.id || m.player2Id === currentPlayer.id)
+    )
+    
+    console.log('Final matches found:', finalMatches.length, 'for player:', currentPlayer.name)
+    
+    for (const finalMatch of finalMatches) {
+      const tournament = tournamentsStore.tournaments.find(t => t.id === finalMatch.tournamentId)
+      if (!tournament) continue
+      
+      if (hasScheduledMatches(tournament.id)) {
+        continue
+      }
+      
+      const winner = getMatchWinner(finalMatch)
+      console.log('Final match:', finalMatch.id, 'Winner:', winner, 'Current player:', currentPlayer.id)
+      
+      if (winner === currentPlayer.id) {
+        const existing = milestones.value.find(m => 
+          m.type === 'tournament_final_win' &&
+          m.tournamentId === tournament.id &&
+          m.playerId === currentPlayer.id
+        )
+        
+        if (!existing) {
+          const tournamentName = tournament.name || 'Tournament'
+          console.log(`Creating milestone: Tournament Champion: ${tournamentName}`)
+          await addMilestone({
+            type: 'tournament_final_win',
+            title: `Tournament Champion: ${tournamentName}`,
+            description: `Won the final of ${tournamentName}!`,
+            category: 'achievement',
+            tournamentId: tournament.id,
+            tournamentName: tournamentName,
+            playerId: currentPlayer.id
+          })
+        }
       }
     }
   }

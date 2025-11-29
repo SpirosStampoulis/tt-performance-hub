@@ -135,7 +135,6 @@
         <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
         <v-toolbar-title class="font-weight-bold">{{ pageTitle }}</v-toolbar-title>
         <v-spacer></v-spacer>
-        <v-btn icon="mdi-magnify" variant="text"></v-btn>
       </v-app-bar>
     </template>
 

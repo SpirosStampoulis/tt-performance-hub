@@ -162,10 +162,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStreaksStore } from '../stores/streaks'
 import { useMatchesStore } from '../stores/matches'
+import { useTournamentsStore } from '../stores/tournaments'
+import { useOpponentsStore } from '../stores/opponents'
 import { formatDate } from '../utils/date'
 
 const streaksStore = useStreaksStore()
 const matchesStore = useMatchesStore()
+const tournamentsStore = useTournamentsStore()
+const opponentsStore = useOpponentsStore()
 const deleteDialog = ref(false)
 const milestoneToDelete = ref(null)
 
@@ -174,6 +178,8 @@ const records = computed(() => streaksStore.personalRecords)
 onMounted(async () => {
   await Promise.all([
     matchesStore.fetchMatches(),
+    tournamentsStore.fetchTournaments(),
+    opponentsStore.fetchOpponents(),
     streaksStore.fetchMilestones()
   ])
   await checkForNewMilestones()
@@ -207,6 +213,10 @@ const getMilestoneIcon = (type) => {
       return 'mdi-fire'
     case 'longest_streak':
       return 'mdi-chart-line'
+    case 'tournament_top4':
+      return 'mdi-trophy-variant'
+    case 'tournament_final_win':
+      return 'mdi-trophy-award'
     default:
       return 'mdi-trophy'
   }

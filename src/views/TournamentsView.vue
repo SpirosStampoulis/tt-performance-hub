@@ -51,7 +51,7 @@
                 {{ tournament.type }}
               </v-chip>
               <v-chip v-if="tournament.isDefault" size="small" color="warning" variant="flat" prepend-icon="mdi-star">
-                Default
+                Default {{ tournament.type }}
               </v-chip>
             </div>
           </v-card-title>
@@ -66,6 +66,17 @@
             </div>
           </v-card-text>
           <v-card-actions class="pa-4 pt-0">
+            <v-btn 
+              icon="mdi-star" 
+              size="small" 
+              :color="tournament.isDefault ? 'warning' : 'grey'" 
+              variant="text" 
+              @click.stop="toggleDefault(tournament)"
+              :title="tournament.isDefault ? `Unset as default ${tournament.type}` : `Set as default ${tournament.type}`"
+            >
+              <v-icon>{{ tournament.isDefault ? 'mdi-star' : 'mdi-star-outline' }}</v-icon>
+              <v-tooltip activator="parent">{{ tournament.isDefault ? `Unset as default ${tournament.type}` : `Set as default ${tournament.type}` }}</v-tooltip>
+            </v-btn>
             <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openTournamentDialog(tournament)"></v-btn>
             <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(tournament)"></v-btn>
             <v-spacer></v-spacer>
@@ -116,9 +127,10 @@
 
             <v-checkbox
               v-model="formData.isDefault"
-              label="Set as default tournament"
-              hint="This tournament will be pre-selected in dropdowns"
+              :label="`Set as default ${formData.type || 'tournament'}`"
+              :hint="`This ${formData.type || 'tournament'} will be pre-selected in dropdowns for ${formData.type || 'tournament'} type`"
               persistent-hint
+              :disabled="!formData.type"
             ></v-checkbox>
 
             <v-divider class="my-4" v-if="formData.type === 'Tournament'"></v-divider>
@@ -185,12 +197,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useMatchesStore } from '../stores/matches'
 import { formatDate } from '../utils/date'
 
 const router = useRouter()
+const route = useRoute()
 const tournamentsStore = useTournamentsStore()
 const matchesStore = useMatchesStore()
 
@@ -218,6 +231,11 @@ onMounted(async () => {
     tournamentsStore.fetchTournaments(),
     matchesStore.fetchMatches()
   ])
+  
+  // Check if there's a type filter in the query parameters
+  if (route.query.type) {
+    filterType.value = route.query.type
+  }
 })
 
 const filteredTournaments = computed(() => {
@@ -268,10 +286,14 @@ const saveTournament = async () => {
   if (!valid) return
 
   try {
-    // If setting this as default, unset all other defaults
-    if (formData.value.isDefault) {
+    // If setting this as default, unset all other defaults of the same type
+    if (formData.value.isDefault && formData.value.type) {
       const allTournaments = tournamentsStore.tournaments
-      const otherDefaults = allTournaments.filter(t => t.isDefault && t.id !== editingTournament.value?.id)
+      const otherDefaults = allTournaments.filter(t => 
+        t.isDefault && 
+        t.type === formData.value.type && 
+        t.id !== editingTournament.value?.id
+      )
       
       for (const tournament of otherDefaults) {
         await tournamentsStore.updateTournament(tournament.id, { ...tournament, isDefault: false })
@@ -314,6 +336,31 @@ const viewMatches = (tournament) => {
 
 const manageTournament = (tournament) => {
   router.push({ path: '/tournaments/manage', query: { id: tournament.id } })
+}
+
+const toggleDefault = async (tournament) => {
+  try {
+    const newDefaultStatus = !tournament.isDefault
+    
+    // If setting as default, unset all other defaults of the same type
+    if (newDefaultStatus && tournament.type) {
+      const allTournaments = tournamentsStore.tournaments
+      const otherDefaults = allTournaments.filter(t => 
+        t.isDefault && 
+        t.type === tournament.type && 
+        t.id !== tournament.id
+      )
+      
+      for (const otherTournament of otherDefaults) {
+        await tournamentsStore.updateTournament(otherTournament.id, { ...otherTournament, isDefault: false })
+      }
+    }
+    
+    // Update the tournament's default status
+    await tournamentsStore.updateTournament(tournament.id, { ...tournament, isDefault: newDefaultStatus })
+  } catch (error) {
+    console.error('Error toggling default tournament:', error)
+  }
 }
 </script>
 

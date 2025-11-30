@@ -94,6 +94,10 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     return tournaments.value.find(t => t.isDefault) || null
   }
 
+  const getDefaultTournamentByType = (type) => {
+    return tournaments.value.find(t => t.isDefault && t.type === type) || null
+  }
+
   return {
     tournaments,
     loading,
@@ -103,7 +107,8 @@ export const useTournamentsStore = defineStore('tournaments', () => {
     updateTournament,
     deleteTournament,
     getTournamentByName,
-    getDefaultTournament
+    getDefaultTournament,
+    getDefaultTournamentByType
   }
 })
 

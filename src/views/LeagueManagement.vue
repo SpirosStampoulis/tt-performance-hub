@@ -37,68 +37,66 @@
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text>
-            <v-table density="compact" class="standings-table">
-              <thead>
-                <tr>
-                  <th class="text-left">Pos</th>
-                  <th class="text-left">Team</th>
-                  <th class="text-center">P</th>
-                  <th class="text-center">W</th>
-                  <th class="text-center">L</th>
-                  <th class="text-center">MD</th>
-                  <th class="text-center">Pts</th>
-                  <th class="text-center">Last 5</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr 
-                  v-for="(team, index) in standings" 
-                  :key="team.id" 
-                  :class="[
-                    { 'bg-primary-lighten-4': team.isMyTeam },
-                    team.positionClass
-                  ]"
-                >
-                  <td>
-                    <div class="d-flex align-center">
-                      <span>{{ index + 1 }}</span>
-                      <v-chip 
-                        v-if="team.positionLabel" 
-                        :color="getPositionChipColor(team.positionClass)" 
-                        size="x-small" 
-                        variant="flat"
-                        class="ml-2"
-                      >
-                        {{ team.positionLabel }}
-                      </v-chip>
-                    </div>
-                  </td>
-                  <td>
-                    <a @click="viewTeamMatches(team)" style="cursor: pointer; text-decoration: none; color: inherit;">
-                      {{ team.name }}
-                    </a>
-                  </td>
-                  <td class="text-center">{{ team.played }}</td>
-                  <td class="text-center">{{ team.won }}</td>
-                  <td class="text-center">{{ team.lost }}</td>
-                  <td class="text-center" :class="team.matchDifference > 0 ? 'text-success' : team.matchDifference < 0 ? 'text-error' : ''">
-                    {{ team.matchDifference > 0 ? '+' : '' }}{{ team.matchDifference }}
-                  </td>
-                  <td class="text-center"><strong>{{ team.points }}</strong></td>
-                  <td class="text-center">
-                    <div class="last-five-matches">
-                      <span 
-                        v-for="(result, idx) in team.lastFive.split(' ')" 
-                        :key="idx"
-                        :class="['match-result', result === 'W' ? 'win' : result === 'L' ? 'loss' : '']"
-                      >
-                        {{ result }}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
+            <div class="standings-table-wrapper">
+              <v-table density="compact" class="standings-table">
+                <thead>
+                  <tr>
+                    <th class="text-left fixed-col-1">Pos</th>
+                    <th class="text-left fixed-col-2">Team</th>
+                    <th class="text-center scrollable-col">P</th>
+                    <th class="text-center scrollable-col">W</th>
+                    <th class="text-center scrollable-col">L</th>
+                    <th class="text-center scrollable-col">MD</th>
+                    <th class="text-center scrollable-col">Pts</th>
+                    <th class="text-center scrollable-col">Last 5</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr 
+                    v-for="(team, index) in standings" 
+                    :key="team.id" 
+                    :class="[
+                      { 'bg-primary-lighten-4': team.isMyTeam },
+                      team.positionClass
+                    ]"
+                  >
+                    <td class="fixed-col-1">
+                      <div class="d-flex align-center" style="max-width: 100%; overflow: hidden;">
+                        <span 
+                          :class="getPositionNumberClass(team.positionClass)"
+                          class="position-number-circle"
+                        >
+                          {{ index + 1 }}
+                        </span>
+                      </div>
+                    </td>
+                    <td class="fixed-col-2">
+                      <a @click="viewTeamMatches(team)" style="cursor: pointer; text-decoration: none; color: inherit; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ team.name }}
+                      </a>
+                    </td>
+                    <td class="text-center scrollable-col">{{ team.played }}</td>
+                    <td class="text-center scrollable-col">{{ team.won }}</td>
+                    <td class="text-center scrollable-col">{{ team.lost }}</td>
+                    <td class="text-center scrollable-col" :class="team.matchDifference > 0 ? 'text-success' : team.matchDifference < 0 ? 'text-error' : ''">
+                      {{ team.matchDifference > 0 ? '+' : '' }}{{ team.matchDifference }}
+                    </td>
+                    <td class="text-center scrollable-col"><strong>{{ team.points }}</strong></td>
+                    <td class="text-center scrollable-col">
+                      <div class="last-five-matches">
+                        <span 
+                          v-for="(result, idx) in team.lastFive.split(' ')" 
+                          :key="idx"
+                          :class="['match-result', result === 'W' ? 'win' : result === 'L' ? 'loss' : '']"
+                        >
+                          {{ result }}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </div>
           </v-card-text>
         </v-card>
 
@@ -400,32 +398,19 @@
                       <tr
                         v-for="(match, index) in getTeamMatchIndividualMatches(selectedTeamMatch)"
                         :key="match.id"
+                        @click="match.id && $router.push(`/matches/${match.id}`)"
+                        style="cursor: pointer;"
+                        class="match-row-hover"
                       >
                         <td>
                           <v-chip size="x-small" color="primary" variant="flat">{{ index + 1 }}</v-chip>
                         </td>
                         <td>
-                          <a 
-                            v-if="match.player1Id"
-                            @click.stop="$router.push(`/opponents/${match.player1Id}`)"
-                            :class="['player-link', getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)]"
-                            style="cursor: pointer; text-decoration: none; color: inherit;"
-                          >
-                            {{ getPlayerName(match.player1Id) }}
-                          </a>
-                          <span v-else :class="getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
+                          <span :class="getMatchWinnerClass(match, selectedTeamMatch.team1Id || selectedTeamMatch.myTeamId)">
                             {{ getPlayerName(match.player1Id) }}
                           </span>
                           <span class="mx-2">vs</span>
-                          <a 
-                            v-if="match.player2Id"
-                            @click.stop="$router.push(`/opponents/${match.player2Id}`)"
-                            :class="['player-link', getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)]"
-                            style="cursor: pointer; text-decoration: none; color: inherit;"
-                          >
-                            {{ getPlayerName(match.player2Id) }}
-                          </a>
-                          <span v-else :class="getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)">
+                          <span :class="getMatchWinnerClass(match, selectedTeamMatch.team2Id || selectedTeamMatch.opponentTeamId)">
                             {{ getPlayerName(match.player2Id) }}
                           </span>
                         </td>
@@ -1075,14 +1060,14 @@ const getTeamName = (teamId) => {
   return team ? team.name : 'Unknown'
 }
 
-const getPositionChipColor = (positionClass) => {
-  const colors = {
-    'promoted': 'success',
-    'playoff': 'warning',
-    'playout': 'warning',
-    'demoted': 'error'
+const getPositionNumberClass = (positionClass) => {
+  const classes = {
+    'promoted': 'text-success',
+    'playoff': 'text-warning',
+    'playout': 'text-warning',
+    'demoted': 'text-error'
   }
-  return colors[positionClass] || 'default'
+  return classes[positionClass] || ''
 }
 
 const getPlayerName = (playerId) => {
@@ -2026,24 +2011,164 @@ const cleanupDuplicates = async () => {
 </script>
 
 <style scoped>
-.standings-table .promoted {
-  background-color: rgba(76, 175, 80, 0.15) !important;
-  border-left: 4px solid #4CAF50;
+.standings-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  isolation: isolate;
 }
 
-.standings-table .playoff {
-  background-color: rgba(255, 193, 7, 0.15) !important;
-  border-left: 4px solid #FFC107;
+.standings-table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  position: relative;
 }
 
-.standings-table .playout {
-  background-color: rgba(255, 193, 7, 0.15) !important;
-  border-left: 4px solid #FFC107;
+.standings-table tbody tr {
+  position: relative;
+  z-index: 1;
 }
 
-.standings-table .demoted {
-  background-color: rgba(244, 67, 54, 0.15) !important;
-  border-left: 4px solid #F44336;
+.standings-table th.scrollable-col,
+.standings-table td.scrollable-col {
+  position: relative;
+  z-index: 1;
+  background-color: inherit;
+}
+
+.standings-table th.fixed-col-1,
+.standings-table td.fixed-col-1 {
+  position: sticky;
+  left: 0;
+  z-index: 100;
+  background-color: white !important;
+  width: 50px !important;
+  min-width: 50px !important;
+  max-width: 50px !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  isolation: isolate;
+  padding-left: 8px !important;
+  padding-right: 4px !important;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.standings-table th.fixed-col-1,
+.standings-table td.fixed-col-1 > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  width: 100%;
+}
+
+.standings-table th.fixed-col-2,
+.standings-table td.fixed-col-2 {
+  position: sticky;
+  left: 50px;
+  z-index: 101;
+  background-color: white !important;
+  width: 150px !important;
+  min-width: 150px !important;
+  max-width: 150px !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  isolation: isolate;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.standings-table th.fixed-col-1 {
+  z-index: 100;
+  background-color: white !important;
+}
+
+.standings-table th.fixed-col-2 {
+  z-index: 101;
+  background-color: white !important;
+}
+
+.standings-table tr.promoted td.fixed-col-1 {
+  z-index: 100 !important;
+}
+
+.standings-table tr.promoted td.fixed-col-2 {
+  z-index: 101 !important;
+}
+
+.standings-table tr.playoff td.fixed-col-1,
+.standings-table tr.playout td.fixed-col-1 {
+  z-index: 100 !important;
+}
+
+.standings-table tr.playoff td.fixed-col-2,
+.standings-table tr.playout td.fixed-col-2 {
+  z-index: 101 !important;
+}
+
+.standings-table tr.demoted td.fixed-col-1 {
+  z-index: 100 !important;
+}
+
+.standings-table tr.demoted td.fixed-col-2 {
+  z-index: 101 !important;
+}
+
+.standings-table tr.bg-primary-lighten-4 td.fixed-col-1 {
+  z-index: 100 !important;
+}
+
+.standings-table tr.bg-primary-lighten-4 td.fixed-col-2 {
+  z-index: 101 !important;
+}
+
+.position-number-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.position-number-circle.text-success {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.position-number-circle.text-error {
+  background-color: rgba(244, 67, 54, 0.2);
+  color: #F44336;
+}
+
+.position-number-circle.text-warning {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #FFC107;
+}
+
+.match-row-hover:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 960px) {
+  .standings-table-wrapper {
+    overflow-x: visible;
+  }
+  
+  .standings-table th.fixed-col-1,
+  .standings-table td.fixed-col-1,
+  .standings-table th.fixed-col-2,
+  .standings-table td.fixed-col-2 {
+    position: static;
+  }
 }
 
 .last-five-matches {
@@ -2095,4 +2220,5 @@ const cleanupDuplicates = async () => {
   transform: scale(1.1);
 }
 </style>
+
 

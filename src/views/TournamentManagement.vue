@@ -213,42 +213,47 @@
 
         <!-- Knockout Stages Section -->
         <v-card v-if="knockoutMatches.length > 0 || (groups.length === 4 && groupMatches.length > 0)">
-          <v-card-title>
-            <v-icon class="mr-2">mdi-trophy-variant</v-icon>
-            Knockout Stages
-            <v-spacer></v-spacer>
-            <v-btn 
-              v-if="groups.length === 4"
-              size="small" 
-              color="primary" 
-              prepend-icon="mdi-refresh"
-              @click="checkAndCreateNextRound"
-              :loading="isCreatingSemiFinals || isCreatingFinal"
-            >
-              Update Next Round
-            </v-btn>
-            <v-btn 
-              v-if="groups.length === 4 && knockoutMatches.filter(m => m.round === 'Quarter-Final').length >= 4"
-              size="small" 
-              color="success" 
-              prepend-icon="mdi-trophy"
-              @click="createSemiFinals"
-              :loading="isCreatingSemiFinals"
-              class="ml-2"
-            >
-              Create Semi-Finals
-            </v-btn>
-            <v-btn 
-              v-if="groups.length === 4 && knockoutMatches.filter(m => m.round === 'Semi-Final').length >= 2"
-              size="small" 
-              color="warning" 
-              prepend-icon="mdi-trophy-variant"
-              @click="createFinal"
-              :loading="isCreatingFinal"
-              class="ml-2"
-            >
-              Create Final
-            </v-btn>
+          <v-card-title class="d-flex flex-column flex-md-row align-start align-md-center">
+            <div class="d-flex align-center mb-2 mb-md-0">
+              <v-icon class="mr-2">mdi-trophy-variant</v-icon>
+              <span>Knockout Stages</span>
+            </div>
+            <v-spacer class="d-none d-md-block"></v-spacer>
+            <div class="d-flex flex-wrap mt-2 mt-md-0">
+              <v-btn 
+                v-if="groups.length === 4"
+                size="small" 
+                color="primary" 
+                prepend-icon="mdi-refresh"
+                @click="checkAndCreateNextRound"
+                :loading="isCreatingSemiFinals || isCreatingFinal"
+                class="mr-2 mb-2 mb-md-0"
+              >
+                Update Next Round
+              </v-btn>
+              <v-btn 
+                v-if="groups.length === 4 && knockoutMatches.filter(m => m.round === 'Quarter-Final').length >= 4"
+                size="small" 
+                color="success" 
+                prepend-icon="mdi-trophy"
+                @click="createSemiFinals"
+                :loading="isCreatingSemiFinals"
+                class="mr-2 mb-2 mb-md-0"
+              >
+                Create Semi-Finals
+              </v-btn>
+              <v-btn 
+                v-if="groups.length === 4 && knockoutMatches.filter(m => m.round === 'Semi-Final').length >= 2"
+                size="small" 
+                color="warning" 
+                prepend-icon="mdi-trophy-variant"
+                @click="createFinal"
+                :loading="isCreatingFinal"
+                class="mb-2 mb-md-0"
+              >
+                Create Final
+              </v-btn>
+            </div>
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text>
@@ -653,6 +658,7 @@ const tournament = ref(null)
 const groups = ref([])
 const selectedGroup = ref(null)
 const groupTab = ref('players')
+const userSelectedTournament = ref(false)
 const showCreateGroupDialog = ref(false)
 const showAssignPlayerDialog = ref(false)
 const playerToAssign = ref(null)
@@ -682,7 +688,12 @@ const tournamentTournaments = computed(() => {
       displayName: `${t.name} (${t.year})`
     }))
     .sort((a, b) => {
+      // Default tournaments first
+      if (a.isDefault && !b.isDefault) return -1
+      if (!a.isDefault && b.isDefault) return 1
+      // Then by year
       if (b.year !== a.year) return (b.year || 0) - (a.year || 0)
+      // Then by name
       return a.name.localeCompare(b.name)
     })
 })
@@ -1445,6 +1456,7 @@ watch(selectedTournament, async (newVal) => {
   if (newVal) {
     await loadTournament(newVal)
     router.replace({ path: '/tournaments/manage', query: { id: newVal } })
+    userSelectedTournament.value = true
   }
 })
 
@@ -1463,10 +1475,51 @@ onMounted(async () => {
     selectedTournament.value = tournamentId
     await loadTournament(tournamentId)
   } else if (tournamentTournaments.value.length > 0) {
-    // Auto-select first tournament if available
-    selectedTournament.value = tournamentTournaments.value[0].id
-    await loadTournament(selectedTournament.value)
+    // First try to find default tournament
+    const defaultTournament = tournamentsStore.getDefaultTournamentByType('Tournament')
+    if (defaultTournament) {
+      selectedTournament.value = defaultTournament.id
+      await loadTournament(defaultTournament.id)
+    } else {
+      // Fallback to first tournament if no default is set
+      selectedTournament.value = tournamentTournaments.value[0].id
+      await loadTournament(selectedTournament.value)
+    }
   }
 })
+
+// Watch for changes in tournaments to update selected tournament if default changes
+watch(() => tournamentsStore.tournaments, (newTournaments) => {
+  if (!selectedTournament.value && tournamentTournaments.value.length > 0) {
+    // No tournament selected, select default
+    const defaultTournament = tournamentsStore.getDefaultTournamentByType('Tournament')
+    if (defaultTournament) {
+      selectedTournament.value = defaultTournament.id
+      loadTournament(defaultTournament.id)
+    }
+  } else if (selectedTournament.value) {
+    // Check if current selected tournament is still valid
+    const currentTournament = newTournaments.find(t => t.id === selectedTournament.value)
+    if (!currentTournament) {
+      // Tournament was deleted, select default or first available
+      const defaultTournament = tournamentsStore.getDefaultTournamentByType('Tournament')
+      if (defaultTournament) {
+        selectedTournament.value = defaultTournament.id
+        loadTournament(defaultTournament.id)
+      } else if (tournamentTournaments.value.length > 0) {
+        selectedTournament.value = tournamentTournaments.value[0].id
+        loadTournament(selectedTournament.value)
+      }
+    } else if (!userSelectedTournament.value) {
+      // Only auto-update if user hasn't manually selected a tournament
+      // Check if a new default was set and update selection
+      const defaultTournament = tournamentsStore.getDefaultTournamentByType('Tournament')
+      if (defaultTournament && defaultTournament.id !== selectedTournament.value) {
+        selectedTournament.value = defaultTournament.id
+        loadTournament(defaultTournament.id)
+      }
+    }
+  }
+}, { deep: true })
 </script>
 

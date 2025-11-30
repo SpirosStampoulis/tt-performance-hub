@@ -25,7 +25,27 @@
           <v-divider></v-divider>
           <v-card-text>
             <div class="match-players-section">
-              <div class="text-h4 font-weight-bold mb-2">{{ getPlayer1Name }} vs {{ getPlayer2Name }}</div>
+              <div class="text-h4 font-weight-bold mb-2">
+                <a 
+                  v-if="match.player1Id || match.opponentId"
+                  @click="$router.push(`/opponents/${match.player1Id || match.opponentId}`)"
+                  style="cursor: pointer; text-decoration: none; color: inherit;"
+                  class="player-link"
+                >
+                  {{ getPlayer1Name }}
+                </a>
+                <span v-else>{{ getPlayer1Name }}</span>
+                <span class="mx-2">vs</span>
+                <a 
+                  v-if="match.player2Id"
+                  @click="$router.push(`/opponents/${match.player2Id}`)"
+                  style="cursor: pointer; text-decoration: none; color: inherit;"
+                  class="player-link"
+                >
+                  {{ getPlayer2Name }}
+                </a>
+                <span v-else>{{ getPlayer2Name }}</span>
+              </div>
               <div v-if="match.player1TeamId || match.player2TeamId" class="mb-3">
                 <v-chip size="small" class="mr-1">
                   <v-icon start size="small">mdi-shield-account</v-icon>
@@ -312,6 +332,14 @@ const saveServeStats = async () => {
 </script>
 
 <style scoped>
+.player-link {
+  transition: color 0.2s ease;
+}
+
+.player-link:hover {
+  color: #DC143C;
+  text-decoration: underline;
+}
 .match-header-card {
   background: linear-gradient(135deg, rgba(220, 20, 60, 0.05) 0%, rgba(255, 215, 0, 0.05) 100%);
   border: 2px solid rgba(220, 20, 60, 0.2);

@@ -34,26 +34,34 @@
             rounded="lg"
           ></v-list-item>
           <v-list-item
-            prepend-icon="mdi-calendar"
-            title="Calendar"
-            value="calendar"
-            to="/calendar"
+            prepend-icon="mdi-shield-account"
+            title="MTTA League"
+            value="leagues"
+            to="/leagues"
             class="modern-nav-item"
             rounded="lg"
           ></v-list-item>
           <v-list-item
-            prepend-icon="mdi-tournament"
-            title="Tournaments"
-            value="tournaments"
+            prepend-icon="mdi-trophy-variant"
+            title="Tournament"
+            value="tournament"
             to="/tournaments/manage"
             class="modern-nav-item"
             rounded="lg"
           ></v-list-item>
           <v-list-item
-            prepend-icon="mdi-shield-account"
-            title="League Management"
-            value="leagues"
-            to="/leagues"
+            prepend-icon="mdi-cog"
+            title="Tournament Management"
+            value="tournament-management"
+            to="/tournaments"
+            class="modern-nav-item"
+            rounded="lg"
+          ></v-list-item>
+          <v-list-item
+            prepend-icon="mdi-calendar"
+            title="Calendar"
+            value="calendar"
+            to="/calendar"
             class="modern-nav-item"
             rounded="lg"
           ></v-list-item>
@@ -78,22 +86,6 @@
             title="Skills"
             value="skills"
             to="/skills"
-            class="modern-nav-item"
-            rounded="lg"
-          ></v-list-item>
-          <v-list-item
-            prepend-icon="mdi-target"
-            title="Goals"
-            value="goals"
-            to="/goals"
-            class="modern-nav-item"
-            rounded="lg"
-          ></v-list-item>
-          <v-list-item
-            prepend-icon="mdi-dumbbell"
-            title="Practice"
-            value="practice"
-            to="/practice"
             class="modern-nav-item"
             rounded="lg"
           ></v-list-item>
@@ -160,20 +152,23 @@ const theme = useTheme()
 const { logout } = useAuth()
 
 const pageTitle = computed(() => {
+  // Check if we're on tournaments page with League filter
+  if (route.name === 'Tournaments' && route.query.type === 'League') {
+    return 'MTTA League'
+  }
+  
   const titles = {
     Dashboard: 'Dashboard',
     Matches: 'Match Tracker',
     MatchDetail: 'Match Details',
     Calendar: 'Match Calendar',
-    Tournaments: 'Tournaments',
-    TournamentManagement: 'Tournament Management',
-    LeagueManagement: 'League Management',
+    Tournaments: route.query.type ? `Tournaments - ${route.query.type}` : 'Tournament Management',
+    TournamentManagement: 'Tournament',
+    LeagueManagement: 'MTTA League',
     Teams: 'Teams',
     Opponents: 'Players',
     OpponentDetail: 'Player Profile',
     Skills: 'Skill Library',
-    Goals: 'Goals',
-    Practice: 'Practice Log',
     Streaks: 'Streaks & Milestones',
     MatchPreparation: 'Match Preparation',
     Login: 'Login'

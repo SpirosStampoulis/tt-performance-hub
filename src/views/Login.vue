@@ -42,8 +42,21 @@
                 prepend-icon="mdi-login"
                 rounded="lg"
                 elevation="2"
+                class="mb-3"
               >
                 Login
+              </v-btn>
+              <v-divider class="my-4"></v-divider>
+              <v-btn 
+                color="secondary" 
+                block 
+                size="large"
+                prepend-icon="mdi-account-outline"
+                rounded="lg"
+                elevation="2"
+                @click="handleGuestLogin"
+              >
+                Join as Guest
               </v-btn>
             </v-form>
           </v-card-text>
@@ -59,7 +72,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
-const { login } = useAuth()
+const { login, loginAsGuest } = useAuth()
 const email = ref('')
 const password = ref('')
 const error = ref('')
@@ -80,6 +93,11 @@ const handleLogin = async () => {
   } finally {
     loggingIn.value = false
   }
+}
+
+const handleGuestLogin = () => {
+  loginAsGuest()
+  router.push('/')
 }
 </script>
 

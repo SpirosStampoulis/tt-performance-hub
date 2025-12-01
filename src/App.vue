@@ -58,6 +58,7 @@
             rounded="lg"
           ></v-list-item>
           <v-list-item
+            v-if="!isGuest"
             prepend-icon="mdi-calendar"
             title="Calendar"
             value="calendar"
@@ -82,6 +83,7 @@
             rounded="lg"
           ></v-list-item>
           <v-list-item
+            v-if="!isGuest"
             prepend-icon="mdi-school"
             title="Skills"
             value="skills"
@@ -90,6 +92,7 @@
             rounded="lg"
           ></v-list-item>
           <v-list-item
+            v-if="!isGuest"
             prepend-icon="mdi-fire"
             title="Streaks"
             value="streaks"
@@ -98,6 +101,7 @@
             rounded="lg"
           ></v-list-item>
           <v-list-item
+            v-if="!isGuest"
             prepend-icon="mdi-clipboard-text"
             title="Match Preparation"
             value="match-preparation"
@@ -127,6 +131,9 @@
         <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
         <v-toolbar-title class="font-weight-bold">{{ pageTitle }}</v-toolbar-title>
         <v-spacer></v-spacer>
+        <v-chip v-if="isGuest" color="warning" variant="flat" prepend-icon="mdi-account-outline" class="mr-2">
+          Guest Mode
+        </v-chip>
       </v-app-bar>
     </template>
 
@@ -149,7 +156,7 @@ const drawer = ref(true)
 const route = useRoute()
 const router = useRouter()
 const theme = useTheme()
-const { logout } = useAuth()
+const { logout, isGuest } = useAuth()
 
 const pageTitle = computed(() => {
   // Check if we're on tournaments page with League filter

@@ -9,6 +9,7 @@
           size="large"
           rounded="lg"
           elevation="2"
+          :disabled="isGuest"
         >
           Add Tournament
         </v-btn>
@@ -73,12 +74,13 @@
               variant="text" 
               @click.stop="toggleDefault(tournament)"
               :title="tournament.isDefault ? `Unset as default ${tournament.type}` : `Set as default ${tournament.type}`"
+              :disabled="isGuest"
             >
               <v-icon>{{ tournament.isDefault ? 'mdi-star' : 'mdi-star-outline' }}</v-icon>
               <v-tooltip activator="parent">{{ tournament.isDefault ? `Unset as default ${tournament.type}` : `Set as default ${tournament.type}` }}</v-tooltip>
             </v-btn>
-            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openTournamentDialog(tournament)"></v-btn>
-            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(tournament)"></v-btn>
+            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openTournamentDialog(tournament)" :disabled="isGuest"></v-btn>
+            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(tournament)" :disabled="isGuest"></v-btn>
             <v-spacer></v-spacer>
             <v-btn variant="text" size="small" @click.stop="viewMatches(tournament)">View Matches</v-btn>
             <v-btn 
@@ -174,7 +176,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="closeTournamentDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="saveTournament">Save</v-btn>
+          <v-btn color="primary" @click="saveTournament" :disabled="isGuest">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -188,7 +190,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" @click="deleteTournament">Delete</v-btn>
+          <v-btn color="error" @click="deleteTournament" :disabled="isGuest">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -200,12 +202,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useMatchesStore } from '../stores/matches'
+import { useAuth } from '../composables/useAuth'
 import { formatDate } from '../utils/date'
 
 const router = useRouter()
 const route = useRoute()
 const tournamentsStore = useTournamentsStore()
 const matchesStore = useMatchesStore()
+const { isGuest } = useAuth()
 
 const tournamentDialog = ref(false)
 const deleteDialog = ref(false)

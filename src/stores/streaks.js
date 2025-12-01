@@ -262,6 +262,7 @@ export const useStreaksStore = defineStore('streaks', () => {
 
     await checkTournamentGroupTop4()
     await checkTournamentFinalWins()
+    await checkTournamentKnockoutStage()
 
     for (const milestone of newMilestones) {
       const exists = milestones.value.some(m => 
@@ -368,7 +369,6 @@ export const useStreaksStore = defineStore('streaks', () => {
     
     const currentPlayer = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
     if (!currentPlayer) {
-      console.log('Player not found:', PLAYER_NAME, 'Available players:', opponentsStore.opponents.map(o => o.name))
       return
     }
     
@@ -391,6 +391,32 @@ export const useStreaksStore = defineStore('streaks', () => {
         if (playerIndex !== -1 && playerIndex < 4) {
           const position = playerIndex + 1
           
+          const groupMatches = matchesStore.matches.filter(m => 
+            m.tournamentId === tournament.id &&
+            m.round === `Group ${group.name}` &&
+            (m.player1Id === currentPlayer.id || m.player2Id === currentPlayer.id) &&
+            m.scores &&
+            m.scores.length > 0
+          )
+          
+          let achievementDate = new Date()
+          if (groupMatches.length > 0) {
+            const matchDates = groupMatches
+              .map(m => {
+                if (!m.date) return null
+                if (m.date instanceof Date) return m.date
+                if (m.date?.toDate && typeof m.date.toDate === 'function') return m.date.toDate()
+                return new Date(m.date)
+              })
+              .filter(d => d !== null && !isNaN(d.getTime()))
+              .sort((a, b) => b - a)
+            
+            if (matchDates.length > 0) {
+              achievementDate = matchDates[0]
+            }
+          }
+          
+          await fetchMilestones()
           const existing = milestones.value.find(m => 
             m.type === 'tournament_top4' &&
             m.tournamentId === tournament.id &&
@@ -399,23 +425,39 @@ export const useStreaksStore = defineStore('streaks', () => {
             m.position === position
           )
           
-          if (!existing) {
-            const tournamentName = tournament.name
-            const groupName = group.name
-            const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : '4th'
+          if (existing) {
+            const existingDate = existing.date instanceof Date ? existing.date : (existing.date?.toDate ? existing.date.toDate() : new Date(existing.date))
+            const dateDiff = Math.abs(achievementDate.getTime() - existingDate.getTime())
+            const oneDay = 24 * 60 * 60 * 1000
             
-            await addMilestone({
-              type: 'tournament_top4',
-              title: `Top ${position} in ${tournamentName} - Group ${groupName}`,
-              description: `Finished ${positionText} place in Group ${groupName} of ${tournamentName}`,
-              category: 'achievement',
-              tournamentId: tournament.id,
-              tournamentName: tournamentName,
-              groupName: groupName,
-              playerId: currentPlayer.id,
-              position: position
-            })
+            if (dateDiff > oneDay) {
+              const docRef = doc(db, 'milestones', existing.id)
+              await updateDoc(docRef, {
+                date: Timestamp.fromDate(achievementDate)
+              })
+              await fetchMilestones()
+            }
+            continue
           }
+          
+          const tournamentName = tournament.name
+          const groupName = group.name
+          const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : '4th'
+          
+          await addDoc(collection(db, 'milestones'), {
+            type: 'tournament_top4',
+            title: `Top ${position} in ${tournamentName} - Group ${groupName}`,
+            description: `Finished ${positionText} place in Group ${groupName} of ${tournamentName}`,
+            category: 'achievement',
+            tournamentId: tournament.id,
+            tournamentName: tournamentName,
+            groupName: groupName,
+            playerId: currentPlayer.id,
+            position: position,
+            date: Timestamp.fromDate(achievementDate),
+            createdAt: Timestamp.now()
+          })
+          await fetchMilestones()
         }
       }
     }
@@ -448,7 +490,6 @@ export const useStreaksStore = defineStore('streaks', () => {
     
     const currentPlayer = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
     if (!currentPlayer) {
-      console.log('Player not found for final check:', PLAYER_NAME)
       return
     }
     
@@ -459,8 +500,6 @@ export const useStreaksStore = defineStore('streaks', () => {
       (m.player1Id === currentPlayer.id || m.player2Id === currentPlayer.id)
     )
     
-    console.log('Final matches found:', finalMatches.length, 'for player:', currentPlayer.name)
-    
     for (const finalMatch of finalMatches) {
       const tournament = tournamentsStore.tournaments.find(t => t.id === finalMatch.tournamentId)
       if (!tournament) continue
@@ -470,29 +509,204 @@ export const useStreaksStore = defineStore('streaks', () => {
       }
       
       const winner = getMatchWinner(finalMatch)
-      console.log('Final match:', finalMatch.id, 'Winner:', winner, 'Current player:', currentPlayer.id)
       
       if (winner === currentPlayer.id) {
+        let achievementDate = new Date()
+        if (finalMatch.date) {
+          if (finalMatch.date instanceof Date) {
+            achievementDate = finalMatch.date
+          } else if (finalMatch.date?.toDate && typeof finalMatch.date.toDate === 'function') {
+            achievementDate = finalMatch.date.toDate()
+          } else if (finalMatch.date) {
+            achievementDate = new Date(finalMatch.date)
+          }
+        }
+        
+        await fetchMilestones()
         const existing = milestones.value.find(m => 
           m.type === 'tournament_final_win' &&
           m.tournamentId === tournament.id &&
           m.playerId === currentPlayer.id
         )
         
-        if (!existing) {
-          const tournamentName = tournament.name || 'Tournament'
-          console.log(`Creating milestone: Tournament Champion: ${tournamentName}`)
-          await addMilestone({
-            type: 'tournament_final_win',
-            title: `Tournament Champion: ${tournamentName}`,
-            description: `Won the final of ${tournamentName}!`,
-            category: 'achievement',
-            tournamentId: tournament.id,
-            tournamentName: tournamentName,
-            playerId: currentPlayer.id
-          })
+        if (existing) {
+          const existingDate = existing.date instanceof Date ? existing.date : (existing.date?.toDate ? existing.date.toDate() : new Date(existing.date))
+          const dateDiff = Math.abs(achievementDate.getTime() - existingDate.getTime())
+          const oneDay = 24 * 60 * 60 * 1000
+          
+          if (dateDiff > oneDay) {
+            const docRef = doc(db, 'milestones', existing.id)
+            await updateDoc(docRef, {
+              date: Timestamp.fromDate(achievementDate)
+            })
+            await fetchMilestones()
+          }
+          continue
+        }
+        
+        const tournamentName = tournament.name || 'Tournament'
+        await addDoc(collection(db, 'milestones'), {
+        type: 'tournament_final_win',
+        title: `Tournament Champion: ${tournamentName}`,
+        description: `Won the final of ${tournamentName}!`,
+        category: 'achievement',
+        tournamentId: tournament.id,
+        tournamentName: tournamentName,
+        playerId: currentPlayer.id,
+        date: Timestamp.fromDate(achievementDate),
+        createdAt: Timestamp.now()
+      })
+      await fetchMilestones()
+      }
+    }
+  }
+
+  const checkTournamentKnockoutStage = async () => {
+    await tournamentsStore.fetchTournaments()
+    await opponentsStore.fetchOpponents()
+    await matchesStore.fetchMatches()
+    await fetchMilestones()
+    
+    const normalizeName = (name) => name.toLowerCase().trim().replace(/\s+/g, ' ')
+    const playerNameVariations = [
+      PLAYER_NAME,
+      'stampoulis spiros',
+      'spiros stampoulis',
+      'Spiros Stampoulis'
+    ]
+    
+    const currentPlayer = opponentsStore.opponents.find(o => {
+      const normalizedPlayerName = normalizeName(o.name)
+      return playerNameVariations.some(variant => 
+        normalizeName(variant) === normalizedPlayerName
+      )
+    })
+    
+    if (!currentPlayer) {
+      return
+    }
+    
+    const knockoutRounds = ['Quarter-Final', 'Semi-Final', 'Final']
+    const roundOrder = { 'Quarter-Final': 1, 'Semi-Final': 2, 'Final': 3 }
+    
+    const tournaments = tournamentsStore.tournaments.filter(t => 
+      t.type === 'Tournament' && !hasScheduledMatches(t.id)
+    )
+    
+    for (const tournament of tournaments) {
+      const tournamentMatches = matchesStore.matches.filter(m => 
+        m.tournamentId === tournament.id &&
+        m.round &&
+        knockoutRounds.includes(m.round) &&
+        (m.player1Id === currentPlayer.id || m.player2Id === currentPlayer.id) &&
+        m.scores &&
+        m.scores.length > 0
+      )
+      
+      if (tournamentMatches.length === 0) continue
+      
+      const roundsReached = tournamentMatches.map(m => m.round)
+      const highestRound = roundsReached.reduce((highest, round) => {
+        return roundOrder[round] > roundOrder[highest] ? round : highest
+      }, roundsReached[0])
+      
+      const achievementTypes = {
+        'Quarter-Final': 'tournament_quarter_final',
+        'Semi-Final': 'tournament_semi_final',
+        'Final': 'tournament_final_reached'
+      }
+      
+      const achievementTitles = {
+        'Quarter-Final': 'Quarter-Finalist',
+        'Semi-Final': 'Semi-Finalist',
+        'Final': 'Finalist'
+      }
+      
+      const achievementTitleFormats = {
+        'Quarter-Final': (tournamentName) => `Quarter-Finalist in ${tournamentName}`,
+        'Semi-Final': (tournamentName) => `Semi-Finalist in ${tournamentName}`,
+        'Final': (tournamentName) => `Finalist in ${tournamentName}`
+      }
+      
+      const achievementDescriptions = {
+        'Quarter-Final': 'Reached the quarter-finals',
+        'Semi-Final': 'Reached the semi-finals',
+        'Final': 'Reached the final'
+      }
+      
+      if (highestRound === 'Final') {
+        const finalMatch = tournamentMatches.find(m => m.round === 'Final')
+        if (finalMatch) {
+          const winner = getMatchWinner(finalMatch)
+          
+          if (winner === currentPlayer.id) {
+            const hasChampionAchievement = milestones.value.find(m => 
+              m.type === 'tournament_final_win' &&
+              m.tournamentId === tournament.id &&
+              m.playerId === currentPlayer.id
+            )
+            if (hasChampionAchievement) {
+              continue
+            }
+          }
         }
       }
+      
+      const highestRoundMatch = tournamentMatches.find(m => m.round === highestRound)
+      
+      if (!highestRoundMatch) {
+        continue
+      }
+      
+      let achievementDate = new Date()
+      if (highestRoundMatch.date) {
+        if (highestRoundMatch.date instanceof Date) {
+          achievementDate = highestRoundMatch.date
+        } else if (highestRoundMatch.date?.toDate && typeof highestRoundMatch.date.toDate === 'function') {
+          achievementDate = highestRoundMatch.date.toDate()
+        } else if (highestRoundMatch.date) {
+          achievementDate = new Date(highestRoundMatch.date)
+        }
+      }
+      
+      await fetchMilestones()
+      const existing = milestones.value.find(m => 
+        m.type === achievementTypes[highestRound] &&
+        m.tournamentId === tournament.id &&
+        m.playerId === currentPlayer.id
+      )
+      
+      if (existing) {
+        const existingDate = existing.date instanceof Date ? existing.date : (existing.date?.toDate ? existing.date.toDate() : new Date(existing.date))
+        const dateDiff = Math.abs(achievementDate.getTime() - existingDate.getTime())
+        const oneDay = 24 * 60 * 60 * 1000
+        
+        if (dateDiff > oneDay) {
+          const docRef = doc(db, 'milestones', existing.id)
+          await updateDoc(docRef, {
+            date: Timestamp.fromDate(achievementDate)
+          })
+          await fetchMilestones()
+        }
+        continue
+      }
+      
+      const tournamentName = tournament.name || 'Tournament'
+      const achievementTitle = achievementTitleFormats[highestRound](tournamentName)
+      
+      await addDoc(collection(db, 'milestones'), {
+        type: achievementType,
+        title: achievementTitle,
+        description: `${achievementDescriptions[highestRound]} of ${tournamentName}!`,
+        category: 'achievement',
+        tournamentId: tournament.id,
+        tournamentName: tournamentName,
+        playerId: currentPlayer.id,
+        round: highestRound,
+        date: Timestamp.fromDate(achievementDate),
+        createdAt: Timestamp.now()
+      })
+      await fetchMilestones()
     }
   }
 

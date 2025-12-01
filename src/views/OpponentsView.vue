@@ -9,6 +9,7 @@
           size="large"
           rounded="lg"
           elevation="2"
+          :disabled="isGuest"
         >
           Add Player
         </v-btn>
@@ -68,8 +69,8 @@
             </v-row>
           </v-card-text>
           <v-card-actions class="pa-4">
-            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openOpponentDialog(opponent)"></v-btn>
-            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(opponent)"></v-btn>
+            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openOpponentDialog(opponent)" :disabled="isGuest"></v-btn>
+            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click.stop="confirmDelete(opponent)" :disabled="isGuest"></v-btn>
             <v-spacer></v-spacer>
             <v-btn append-icon="mdi-arrow-right" variant="text" size="small">View Profile</v-btn>
           </v-card-actions>
@@ -99,7 +100,7 @@
               clearable
             >
               <template v-slot:append>
-                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true"></v-btn>
+                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true" :disabled="isGuest"></v-btn>
               </template>
             </v-select>
 
@@ -156,7 +157,8 @@
               accept="image/*"
               prepend-icon=""
               prepend-inner-icon="mdi-camera"
-              :clearable="true"
+              :clearable="!isGuest"
+              :disabled="isGuest"
             ></v-file-input>
 
             <v-textarea
@@ -170,7 +172,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="closeOpponentDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="saveOpponent" :loading="saving">Save</v-btn>
+          <v-btn color="primary" @click="saveOpponent" :loading="saving" :disabled="isGuest">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -196,7 +198,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="showTeamDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addTeam">Add</v-btn>
+          <v-btn color="primary" @click="addTeam" :disabled="isGuest">Add</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -210,7 +212,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" @click="deleteOpponent">Delete</v-btn>
+          <v-btn color="error" @click="deleteOpponent" :disabled="isGuest">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -223,12 +225,14 @@ import { useOpponentsStore } from '../stores/opponents'
 import { useMatchesStore } from '../stores/matches'
 import { useTeamsStore } from '../stores/teams'
 import { useTournamentsStore } from '../stores/tournaments'
+import { useAuth } from '../composables/useAuth'
 import { uploadImage } from '../utils/storage'
 
 const opponentsStore = useOpponentsStore()
 const matchesStore = useMatchesStore()
 const teamsStore = useTeamsStore()
 const tournamentsStore = useTournamentsStore()
+const { isGuest } = useAuth()
 
 const opponentDialog = ref(false)
 const showTeamDialog = ref(false)

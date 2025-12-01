@@ -19,10 +19,11 @@
           prepend-icon="mdi-account-group" 
           @click="showAddTeamMatchDialog = true" 
           class="mr-2"
+          :disabled="isGuest"
         >
           Add Team Match
         </v-btn>
-        <v-btn color="secondary" prepend-icon="mdi-tournament" @click="openCreateTournamentDialog">
+        <v-btn color="secondary" prepend-icon="mdi-tournament" @click="openCreateTournamentDialog" :disabled="isGuest">
           Create Tournament
         </v-btn>
       </v-col>
@@ -156,6 +157,7 @@
                         variant="outlined"
                         prepend-icon="mdi-pencil"
                         @click.stop="openMatchForScores(match)"
+                        :disabled="isGuest"
                       >
                         Add Scores
                       </v-btn>
@@ -216,34 +218,21 @@
               </v-card-title>
               <v-divider></v-divider>
               <v-card-text>
-                <v-list density="comfortable">
+                <v-list density="compact">
                   <v-list-item
                     v-for="teamMatch in round.matches"
                     :key="teamMatch.id"
                     @click="viewTeamMatch(teamMatch)"
-                    class="mb-2"
-                    style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px;"
+                    class="mb-1"
+                    style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px; cursor: pointer;"
                   >
-                    <v-list-item-title class="mb-1" style="white-space: normal; word-break: break-word; line-height: 1.4; overflow: visible;">
-                      <span class="text-body-1 text-md-h6">
-                        {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
-                      </span>
-                      <v-icon 
-                        v-if="teamMatch.photoUrl" 
-                        size="small" 
-                        color="primary" 
-                        class="ml-2"
-                        style="display: inline-block; vertical-align: middle;"
-                      >
-                        mdi-image
-                      </v-icon>
+                    <v-list-item-title class="match-title-mobile">
+                      {{ getTeamName(teamMatch.team1Id || teamMatch.myTeamId) }} vs {{ getTeamName(teamMatch.team2Id || teamMatch.opponentTeamId) }}
                     </v-list-item-title>
                     <template v-slot:append>
-                      <div class="text-right">
-                        <div class="text-h5">
-                          {{ (teamMatch.team1Score ?? teamMatch.myTeamScore ?? 0) }}-{{ (teamMatch.team2Score ?? teamMatch.opponentTeamScore ?? 0) }}
-                        </div>
-                      </div>
+                      <v-chip size="small">
+                        {{ (teamMatch.team1Score ?? teamMatch.myTeamScore ?? 0) }}-{{ (teamMatch.team2Score ?? teamMatch.opponentTeamScore ?? 0) }}
+                      </v-chip>
                     </template>
                   </v-list-item>
                 </v-list>
@@ -331,7 +320,8 @@
               accept="image/*"
               prepend-icon=""
               prepend-inner-icon="mdi-camera"
-              :clearable="true"
+              :clearable="!isGuest"
+              :disabled="isGuest"
               @update:model-value="handleNewTeamMatchPhotoChange"
             ></v-file-input>
 
@@ -347,7 +337,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="closeAddTeamMatchDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="saveTeamMatch" :loading="savingTeamMatch">Save</v-btn>
+          <v-btn color="primary" @click="saveTeamMatch" :loading="savingTeamMatch" :disabled="isGuest">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -449,7 +439,8 @@
                     accept="image/*"
                     prepend-icon=""
                     prepend-inner-icon="mdi-camera"
-                    :clearable="true"
+                    :clearable="!isGuest"
+                    :disabled="isGuest"
                     @update:model-value="handlePhotoFileChange"
                   ></v-file-input>
                   <v-progress-linear v-if="uploadingPhoto" indeterminate class="mt-2"></v-progress-linear>
@@ -460,7 +451,7 @@
                     class="mt-2"
                     @click="handlePhotoUpload"
                     :loading="uploadingPhoto"
-                    :disabled="uploadingPhoto"
+                    :disabled="uploadingPhoto || isGuest"
                   >
                     Upload Photo
                   </v-btn>
@@ -481,6 +472,7 @@
             color="error" 
             prepend-icon="mdi-delete" 
             @click="confirmDeleteTeamMatch"
+            :disabled="isGuest"
           >
             Delete
           </v-btn>
@@ -489,6 +481,7 @@
             color="primary" 
             prepend-icon="mdi-pencil" 
             @click="editTeamMatch"
+            :disabled="isGuest"
           >
             Edit
           </v-btn>
@@ -506,7 +499,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="showDeleteTeamMatchDialog = false">Cancel</v-btn>
-          <v-btn color="error" @click="deleteTeamMatch">Delete</v-btn>
+          <v-btn color="error" @click="deleteTeamMatch" :disabled="isGuest">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -531,49 +524,31 @@
           <div v-if="getTeamMatches(selectedTeamForMatches.id).length === 0" class="text-center text-medium-emphasis py-8">
             No team matches found for this team
           </div>
-          <v-list v-else density="comfortable">
+          <v-list v-else density="compact">
             <v-list-item
               v-for="teamMatch in getTeamMatches(selectedTeamForMatches.id)"
               :key="teamMatch.id"
               @click="viewTeamMatch(teamMatch)"
-              class="mb-2"
-              style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px;"
+              class="mb-1"
+              style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px; cursor: pointer;"
             >
-              <template v-slot:prepend>
-                <v-avatar v-if="teamMatch.photoUrl" size="50" class="mr-3">
-                  <v-img :src="teamMatch.photoUrl"></v-img>
-                </v-avatar>
-                <v-avatar v-else size="50" color="grey-lighten-2" class="mr-3">
-                  <v-icon>mdi-trophy</v-icon>
-                </v-avatar>
-              </template>
-              <v-list-item-title class="text-h6 mb-1">
+              <v-list-item-title class="match-title-mobile">
                 vs {{ getOpponentTeamName(teamMatch, selectedTeamForMatches.id) }}
-                <v-icon 
-                  v-if="teamMatch.photoUrl" 
-                  size="small" 
-                  color="primary" 
-                  class="ml-2"
-                >
-                  mdi-image
-                </v-icon>
               </v-list-item-title>
               <v-list-item-subtitle>
-                <v-icon size="small" class="mr-1">mdi-calendar-range</v-icon>
                 Round {{ teamMatch.round }} • {{ formatDate(teamMatch.date) }}
               </v-list-item-subtitle>
               <template v-slot:append>
-                <div class="text-right">
-                  <div class="text-h5 mb-1">
-                    {{ getTeamScore(teamMatch, selectedTeamForMatches.id) }}-{{ getOpponentScore(teamMatch, selectedTeamForMatches.id) }}
-                  </div>
-                  <v-chip 
-                    size="small" 
-                    :color="getTeamMatchResult(teamMatch, selectedTeamForMatches.id) === 'Won' ? 'success' : 'error'"
-                  >
-                    {{ getTeamMatchResult(teamMatch, selectedTeamForMatches.id) }}
-                  </v-chip>
-                </div>
+                <v-chip size="small">
+                  {{ getTeamScore(teamMatch, selectedTeamForMatches.id) }}-{{ getOpponentScore(teamMatch, selectedTeamForMatches.id) }}
+                </v-chip>
+                <v-chip 
+                  size="small" 
+                  :color="getTeamMatchResult(teamMatch, selectedTeamForMatches.id) === 'Won' ? 'success' : 'error'"
+                  class="ml-1"
+                >
+                  {{ getTeamMatchResult(teamMatch, selectedTeamForMatches.id) }}
+                </v-chip>
               </template>
             </v-list-item>
           </v-list>
@@ -631,6 +606,7 @@ import { useTeamsStore } from '../stores/teams'
 import { useTeamMatchesStore } from '../stores/teamMatches'
 import { useMatchesStore } from '../stores/matches'
 import { useOpponentsStore } from '../stores/opponents'
+import { useAuth } from '../composables/useAuth'
 import { formatDate } from '../utils/date'
 import { uploadImage } from '../utils/storage'
 
@@ -640,6 +616,7 @@ const teamsStore = useTeamsStore()
 const teamMatchesStore = useTeamMatchesStore()
 const matchesStore = useMatchesStore()
 const opponentsStore = useOpponentsStore()
+const { isGuest } = useAuth()
 
 const selectedTournament = ref(null)
 const refreshing = ref(false)
@@ -699,7 +676,6 @@ onMounted(async () => {
   // Recalculate when page becomes visible (user switches back to tab)
   document.addEventListener('visibilitychange', async () => {
     if (!document.hidden && selectedTournament.value && !isSimpleLeague.value) {
-      console.log('Page became visible, refreshing data...')
       await Promise.all([
         matchesStore.fetchMatches(),
         teamsStore.fetchTeams(),
@@ -712,7 +688,6 @@ onMounted(async () => {
   // Also recalculate when window gains focus (user switches back to browser)
   window.addEventListener('focus', async () => {
     if (selectedTournament.value && !isSimpleLeague.value) {
-      console.log('Window gained focus, refreshing data...')
       await Promise.all([
         matchesStore.fetchMatches(),
         teamsStore.fetchTeams(),
@@ -749,9 +724,6 @@ watch(() => matchesStore.matches.length, async (newLength, oldLength) => {
   if (!selectedTournament.value || isSimpleLeague.value) return
   if (newLength === oldLength) return
   
-  console.log(`Match count changed: ${oldLength} → ${newLength}, triggering recalculation...`)
-  
-  // Always fetch latest matches to ensure we have the most up-to-date data
   await matchesStore.fetchMatches()
   
   const tournamentMatches = matchesStore.matches.filter(
@@ -759,12 +731,8 @@ watch(() => matchesStore.matches.length, async (newLength, oldLength) => {
   )
   
   if (tournamentMatches.length === 0) {
-    console.log('No tournament matches found, skipping calculation')
     return
   }
-  
-  console.log(`Found ${tournamentMatches.length} matches for tournament ${selectedTournament.value}`)
-  console.log(`Rounds: ${[...new Set(tournamentMatches.map(m => m.round))].join(', ')}`)
   
   // Small delay to ensure matches are fully updated
   await new Promise(resolve => setTimeout(resolve, 300))
@@ -781,7 +749,6 @@ watch(() => matchesStore.matches.length, async (newLength, oldLength) => {
 watch(() => matchesStore.matches, async (newMatches, oldMatches) => {
   if (!selectedTournament.value || isSimpleLeague.value) return
   if (isCalculating.value) {
-    console.log('Calculation already in progress, skipping watcher trigger')
     return
   }
   
@@ -799,8 +766,6 @@ watch(() => matchesStore.matches, async (newMatches, oldMatches) => {
       return // No new matches, skip
     }
   }
-  
-  console.log(`Tournament matches changed: ${oldTournamentMatches.length} → ${newTournamentMatches.length}`)
   
   // Small delay to ensure matches are fully updated
   await new Promise(resolve => setTimeout(resolve, 300))
@@ -1484,11 +1449,8 @@ const backfillTeamIds = async () => {
   )
 
   if (tournamentMatches.length === 0) {
-    console.log('No matches need team ID backfilling')
     return
   }
-
-  console.log(`Backfilling team IDs for ${tournamentMatches.length} matches`)
 
   for (const match of tournamentMatches) {
     let needsUpdate = false
@@ -1499,7 +1461,6 @@ const backfillTeamIds = async () => {
       if (teamId) {
         updateData.player1TeamId = teamId
         needsUpdate = true
-        console.log(`Backfilled player1TeamId for match ${match.id}: ${teamId}`)
       }
     }
 
@@ -1508,7 +1469,6 @@ const backfillTeamIds = async () => {
       if (teamId) {
         updateData.player2TeamId = teamId
         needsUpdate = true
-        console.log(`Backfilled player2TeamId for match ${match.id}: ${teamId}`)
       }
     }
 
@@ -1520,7 +1480,6 @@ const backfillTeamIds = async () => {
           date: match.date instanceof Date ? match.date : (match.date?.toDate ? match.date.toDate() : new Date(match.date))
         }
         await matchesStore.updateMatch(match.id, matchUpdate)
-        console.log(`Updated match ${match.id} with team IDs:`, updateData)
       } catch (error) {
         console.error(`Error updating match ${match.id}:`, error)
       }
@@ -1532,18 +1491,15 @@ const backfillTeamIds = async () => {
 
 const calculateTeamMatches = async () => {
   if (!selectedTournament.value) {
-    console.log('No tournament selected')
     return
   }
 
   // Skip calculation for Simple League tournaments - they use manual team matches
   if (isSimpleLeague.value) {
-    console.log('Skipping team match calculation for Simple League')
     return
   }
 
   if (isCalculating.value) {
-    console.log('Already calculating team matches, skipping...')
     return
   }
 
@@ -1559,12 +1515,6 @@ const calculateTeamMatches = async () => {
     const tournamentMatches = matchesStore.matches.filter(
       m => m.tournamentId === selectedTournament.value && m.round
     )
-    
-    console.log('Calculating team matches for tournament:', selectedTournament.value, 'Matches:', tournamentMatches.length)
-    
-    tournamentMatches.forEach(match => {
-      console.log(`Match ${match.id}: Round ${match.round}, Player1Team: ${match.player1TeamId}, Player2Team: ${match.player2TeamId}, Scores: ${match.scores?.length || 0} sets`)
-    })
 
     const rounds = {}
     tournamentMatches.forEach(match => {
@@ -1574,15 +1524,8 @@ const calculateTeamMatches = async () => {
       }
       rounds[roundKey].push(match)
     })
-    
-    console.log('Rounds found:', Object.keys(rounds).map(r => `${r}: ${rounds[r].length} matches`))
-    console.log('Round details:', Object.entries(rounds).map(([r, m]) => 
-      `Round "${r}": ${m.length} matches (${m.map(mm => mm.id).join(', ')})`
-    ))
 
     for (const [round, matches] of Object.entries(rounds)) {
-      console.log(`\n=== Processing Round ${round} with ${matches.length} matches ===`)
-      
       const teamPairs = {}
       
       matches.forEach(match => {
@@ -1590,7 +1533,6 @@ const calculateTeamMatches = async () => {
         const player2TeamId = match.player2TeamId
 
         if (!player1TeamId || !player2TeamId) {
-          console.log(`Match ${match.id} skipped - missing team IDs. Player1Team: ${player1TeamId}, Player2Team: ${player2TeamId}`)
           return
         }
 
@@ -1606,23 +1548,12 @@ const calculateTeamMatches = async () => {
         teamPairs[pairKey].matches.push(match)
       })
       
-      console.log(`Round ${round}: Found ${Object.keys(teamPairs).length} unique team pairs`)
-      Object.entries(teamPairs).forEach(([key, data]) => {
-        console.log(`  Team pair ${key}: ${data.matches.length} matches between Team ${data.team1Id} and Team ${data.team2Id}`)
-      })
-      
       for (const [pairKey, pairData] of Object.entries(teamPairs)) {
         const { team1Id, team2Id, matches: pairMatches } = pairData
         
-        console.log(`\n--- Processing team pair: ${team1Id} vs ${team2Id}, ${pairMatches.length} matches ---`)
-        
         if (pairMatches.length < 6) {
-          console.log(`✗ Team pair ${team1Id} vs ${team2Id} has only ${pairMatches.length} matches, need 6 - SKIPPING`)
-          console.log(`  Match IDs: ${pairMatches.map(m => m.id).join(', ')}`)
           continue
         }
-        
-        console.log(`✓ Team pair ${team1Id} vs ${team2Id} has ${pairMatches.length} matches - proceeding with calculation`)
 
         const teamScores = {}
         teamScores[team1Id] = 0
@@ -1636,7 +1567,6 @@ const calculateTeamMatches = async () => {
           let player2Sets = 0
 
           if (!match.scores || match.scores.length === 0) {
-            console.log(`Match ${match.id} (${matchesProcessed}/${pairMatches.length}) has no scores array - skipping`)
             return
           }
 
@@ -1652,7 +1582,6 @@ const calculateTeamMatches = async () => {
           })
           
           if (!hasValidSet || (player1Sets === 0 && player2Sets === 0)) {
-            console.log(`Match ${match.id} (${matchesProcessed}/${pairMatches.length}) has no valid scores - skipping from calculation`)
             return
           }
 
@@ -1660,35 +1589,20 @@ const calculateTeamMatches = async () => {
           const matchTeam1Id = match.player1TeamId
           const matchTeam2Id = match.player2TeamId
           
-          console.log(`  Match ${match.id}: Player1 (Team ${matchTeam1Id}) won ${player1Sets} sets, Player2 (Team ${matchTeam2Id}) won ${player2Sets} sets`)
-          
           if (player1Sets > player2Sets) {
             teamScores[matchTeam1Id]++
-            console.log(`    → Team ${matchTeam1Id} wins this match`)
           } else if (player2Sets > player1Sets) {
             teamScores[matchTeam2Id]++
-            console.log(`    → Team ${matchTeam2Id} wins this match`)
-          } else {
-            console.log(`    → Match is a tie (${player1Sets}-${player2Sets} sets) - no team point awarded`)
           }
         })
 
         const team1Score = teamScores[team1Id] || 0
         const team2Score = teamScores[team2Id] || 0
 
-        console.log(`Round ${round}, Team pair ${team1Id} vs ${team2Id}: Team scores - Team1: ${team1Score}, Team2: ${team2Score}, Total: ${team1Score + team2Score}, Matches with scores: ${matchesWithScores}/${pairMatches.length}`)
-
         if (pairMatches.length >= 6 && matchesWithScores > 0) {
-          // Create/update team match if we have 6 matches, even if not all have scores yet
-          // But we need at least some scores to determine a result
-
           const roundStr = String(round)
           
-          // Refresh team matches to get latest before checking for existing
           await teamMatchesStore.fetchTeamMatches()
-          
-          console.log(`Looking for existing team match: Round="${roundStr}", Tournament=${selectedTournament.value}, Teams=${team1Id} vs ${team2Id}`)
-          console.log(`Current team matches in store: ${teamMatchesStore.teamMatches.length} total`)
           
           const existingTeamMatch = teamMatchesStore.teamMatches.find(
             tm => {
@@ -1699,17 +1613,9 @@ const calculateTeamMatches = async () => {
               const isSamePair = (tm.team1Id === team1Id && tm.team2Id === team2Id) ||
                                  (tm.team1Id === team2Id && tm.team2Id === team1Id)
               
-              if (isSameTournament && isSameRound && isSamePair) {
-                console.log(`  Found existing team match: ${tm.id} (Round: "${tmRound}", Teams: ${tm.team1Id} vs ${tm.team2Id})`)
-                return true
-              }
-              return false
+              return isSameTournament && isSameRound && isSamePair
             }
           )
-          
-          if (!existingTeamMatch) {
-            console.log(`  No existing team match found - will create new one`)
-          }
 
           // Get the most recent match date from the pair
           const matchDates = pairMatches
@@ -1728,7 +1634,6 @@ const calculateTeamMatches = async () => {
               round: roundStr,
               photoUrl: existingTeamMatch.photoUrl || null
             })
-            console.log(`✓ Updated team match for Round ${roundStr}, ${team1Id} vs ${team2Id}: ${team1Score}-${team2Score}`)
           } else {
             await teamMatchesStore.addTeamMatch({
               tournamentId: selectedTournament.value,
@@ -1741,10 +1646,7 @@ const calculateTeamMatches = async () => {
               notes: null,
               photoUrl: null
             })
-            console.log(`✓ Created new team match for Round ${roundStr}, ${team1Id} vs ${team2Id}: ${team1Score}-${team2Score}`)
           }
-        } else {
-          console.log(`✗ Skipping team match for ${team1Id} vs ${team2Id}: ${pairMatches.length} matches, ${matchesWithScores} with scores`)
         }
       }
     }
@@ -1755,7 +1657,6 @@ const calculateTeamMatches = async () => {
     // Skip cleanup for Simple League tournaments - they use manually created team matches
     const tournament = tournamentsStore.tournaments.find(t => t.id === selectedTournament.value)
     if (tournament?.type !== 'Simple League') {
-      console.log('\n=== Cleaning up orphaned team matches ===')
       const tournamentTeamMatches = teamMatchesStore.teamMatches.filter(
         tm => tm.tournamentId === selectedTournament.value
       )
@@ -1766,7 +1667,6 @@ const calculateTeamMatches = async () => {
         const team2Id = teamMatch.team2Id || teamMatch.opponentTeamId
         
         if (!team1Id || !team2Id) {
-          console.log(`Skipping team match ${teamMatch.id} - missing team IDs`)
           continue
         }
         
@@ -1784,33 +1684,16 @@ const calculateTeamMatches = async () => {
         })
         
         if (matchesForThisRoundAndPair.length < 6) {
-          console.log(`✗ Deleting orphaned team match ${teamMatch.id}: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - only ${matchesForThisRoundAndPair.length} matches found (need 6)`)
           try {
             await teamMatchesStore.deleteTeamMatch(teamMatch.id)
-            console.log(`  ✓ Deleted team match ${teamMatch.id}`)
           } catch (error) {
-            console.error(`  ✗ Error deleting team match ${teamMatch.id}:`, error)
+            console.error(`Error deleting team match ${teamMatch.id}:`, error)
           }
-        } else {
-          console.log(`✓ Team match ${teamMatch.id} is valid: Round ${teamMatchRound}, Teams ${team1Id} vs ${team2Id} - ${matchesForThisRoundAndPair.length} matches`)
         }
       }
-    } else {
-      console.log('Skipping cleanup for Simple League tournament')
     }
     
-    // Refresh team matches after cleanup
     await teamMatchesStore.fetchTeamMatches()
-    
-    const finalTeamMatches = teamMatchesStore.teamMatches.filter(
-      tm => tm.tournamentId === selectedTournament.value
-    )
-    
-    console.log('=== Team matches calculation complete ===')
-    console.log(`Total team matches for tournament: ${finalTeamMatches.length}`)
-    finalTeamMatches.forEach(tm => {
-      console.log(`  Round ${tm.round}: ${tm.team1Id} vs ${tm.team2Id} - ${tm.team1Score}-${tm.team2Score}`)
-    })
   } finally {
     isCalculating.value = false
   }
@@ -1822,8 +1705,6 @@ const cleanupInvalidSimpleLeagueTeamMatches = async () => {
   const tournament = tournamentsStore.tournaments.find(t => t.id === selectedTournament.value)
   if (tournament?.type !== 'Simple League') return
   
-  console.log('Cleaning up invalid Simple League team matches...')
-  
   const allTeamMatches = teamMatchesStore.getTeamMatchesByTournament(selectedTournament.value)
   let deletedCount = 0
   
@@ -1833,12 +1714,10 @@ const cleanupInvalidSimpleLeagueTeamMatches = async () => {
     // Delete if it has the old calculated structure
     if (tm.myTeamId || tm.opponentTeamId) {
       shouldDelete = true
-      console.log(`Deleting team match ${tm.id}: has old calculated structure`)
     }
     // Delete if it's missing team IDs
     else if (!tm.team1Id || !tm.team2Id) {
       shouldDelete = true
-      console.log(`Deleting team match ${tm.id}: missing team IDs`)
     }
     // Delete if teams don't exist in the tournament
     else {
@@ -1846,7 +1725,6 @@ const cleanupInvalidSimpleLeagueTeamMatches = async () => {
       const team2 = tournamentTeams.value.find(t => t.id === tm.team2Id)
       if (!team1 || !team2) {
         shouldDelete = true
-        console.log(`Deleting team match ${tm.id}: teams don't exist (${tm.team1Id}, ${tm.team2Id})`)
       }
     }
     
@@ -1861,10 +1739,7 @@ const cleanupInvalidSimpleLeagueTeamMatches = async () => {
   }
   
   if (deletedCount > 0) {
-    console.log(`Cleaned up ${deletedCount} invalid Simple League team matches`)
     await teamMatchesStore.fetchTeamMatches()
-  } else {
-    console.log('No invalid Simple League team matches found')
   }
 }
 
@@ -1939,8 +1814,6 @@ const cleanupDuplicates = async () => {
       tm => tm.tournamentId === selectedTournament.value
     )
 
-    console.log(`Found ${tournamentMatches.length} team matches for tournament ${selectedTournament.value}`)
-
     const duplicateGroups = {}
     
     tournamentMatches.forEach(tm => {
@@ -1961,8 +1834,6 @@ const cleanupDuplicates = async () => {
     
     Object.entries(duplicateGroups).forEach(([key, matches]) => {
       if (matches.length > 1) {
-        console.log(`Found ${matches.length} duplicates for key: ${key}`)
-        
         matches.sort((a, b) => {
           if (a.photoUrl && !b.photoUrl) return -1
           if (!a.photoUrl && b.photoUrl) return 1
@@ -1975,7 +1846,6 @@ const cleanupDuplicates = async () => {
         const toKeep = matches[0]
         const toDelete = matches.slice(1)
         
-        console.log(`Keeping match ${toKeep.id}, deleting ${toDelete.length} duplicates`)
         duplicatesToDelete.push(...toDelete)
       }
     })
@@ -1987,7 +1857,6 @@ const cleanupDuplicates = async () => {
       }
     } else {
       for (const match of duplicatesToDelete) {
-        console.log(`Deleting duplicate team match: ${match.id}`)
         await teamMatchesStore.deleteTeamMatch(match.id)
       }
       
@@ -2218,6 +2087,17 @@ const cleanupDuplicates = async () => {
   color: #DC143C !important;
   background-color: rgba(220, 20, 60, 0.1) !important;
   transform: scale(1.1);
+}
+
+.match-title-mobile {
+  white-space: normal !important;
+  word-break: break-word !important;
+  line-height: 1.4 !important;
+  overflow: visible !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  max-height: 2.8em !important;
 }
 </style>
 

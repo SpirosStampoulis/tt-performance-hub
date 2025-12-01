@@ -78,7 +78,7 @@
               prepend-icon="mdi-account-group" 
               class="mb-2"
               @click="showGroupManagement = true"
-              :disabled="!tournament?.numberOfGroups"
+              :disabled="!tournament?.numberOfGroups || isGuest"
             >
               Manage Groups
             </v-btn>
@@ -107,6 +107,7 @@
               icon="mdi-cog" 
               size="small" 
               @click="showGroupManagement = true"
+              :disabled="isGuest"
             >
               <v-icon>mdi-cog</v-icon>
               <v-tooltip activator="parent">Manage Groups</v-tooltip>
@@ -179,12 +180,9 @@
                         class="mb-1"
                         style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px; cursor: pointer;"
                       >
-                        <v-list-item-title>
+                        <v-list-item-title class="match-title-mobile">
                           {{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}
                         </v-list-item-title>
-                        <v-list-item-subtitle>
-                          {{ formatDate(match.date) }}
-                        </v-list-item-subtitle>
                         <template v-slot:append>
                           <v-chip size="small" v-if="getMatchScore(match) !== 'No score'">
                             {{ getMatchScore(match) }}
@@ -272,29 +270,24 @@
               </v-card-title>
               <v-divider></v-divider>
               <v-card-text>
-                <v-list density="comfortable">
+                <v-list density="compact">
                   <v-list-item
                     v-for="match in stage.matches"
                     :key="match.id"
                     @click="viewMatch(match)"
-                    class="mb-2"
+                    class="mb-1"
                     style="border: 1px solid rgba(0,0,0,0.12); border-radius: 4px; cursor: pointer;"
                   >
-                    <v-list-item-title class="text-h6 mb-1">
+                    <v-list-item-title class="match-title-mobile">
                       {{ getPlayerName(match.player1Id) }} vs {{ getPlayerName(match.player2Id) }}
                     </v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ formatDate(match.date) }}
-                    </v-list-item-subtitle>
                     <template v-slot:append>
-                      <div class="text-right">
-                        <div class="text-h5" v-if="getMatchScore(match) !== 'No score'">
-                          {{ getMatchScore(match) }}
-                        </div>
-                        <v-chip size="small" color="info" v-else>
-                          Scheduled
-                        </v-chip>
-                      </div>
+                      <v-chip size="small" v-if="getMatchScore(match) !== 'No score'">
+                        {{ getMatchScore(match) }}
+                      </v-chip>
+                      <v-chip size="small" color="info" v-else>
+                        Scheduled
+                      </v-chip>
                     </template>
                   </v-list-item>
                 </v-list>
@@ -644,6 +637,7 @@ import { useTournamentsStore } from '../stores/tournaments'
 import { useOpponentsStore } from '../stores/opponents'
 import { useMatchesStore } from '../stores/matches'
 import { useTeamsStore } from '../stores/teams'
+import { useAuth } from '../composables/useAuth'
 import { formatDate } from '../utils/date'
 
 const route = useRoute()
@@ -652,6 +646,7 @@ const tournamentsStore = useTournamentsStore()
 const opponentsStore = useOpponentsStore()
 const matchesStore = useMatchesStore()
 const teamsStore = useTeamsStore()
+const { isGuest } = useAuth()
 
 const selectedTournament = ref(null)
 const tournament = ref(null)
@@ -1522,4 +1517,18 @@ watch(() => tournamentsStore.tournaments, (newTournaments) => {
   }
 }, { deep: true })
 </script>
+
+<style scoped>
+.match-title-mobile {
+  white-space: normal !important;
+  word-break: break-word !important;
+  line-height: 1.4 !important;
+  overflow: visible !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  max-height: 2.8em !important;
+}
+</style>
+
 

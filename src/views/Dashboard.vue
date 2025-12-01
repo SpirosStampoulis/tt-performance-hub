@@ -372,6 +372,7 @@
     </v-row>
 
     <v-fab
+      v-if="!isGuest"
       icon="mdi-plus"
       color="primary"
       location="bottom end"
@@ -407,6 +408,7 @@ import { useSkillsStore } from '../stores/skills'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useTeamsStore } from '../stores/teams'
 import { useTeamMatchesStore } from '../stores/teamMatches'
+import { useAuth } from '../composables/useAuth'
 import { formatDateShort } from '../utils/date'
 import WinRateChart from '../components/dashboard/WinRateChart.vue'
 import DivisionChart from '../components/dashboard/DivisionChart.vue'
@@ -420,6 +422,7 @@ const skillsStore = useSkillsStore()
 const tournamentsStore = useTournamentsStore()
 const teamsStore = useTeamsStore()
 const teamMatchesStore = useTeamMatchesStore()
+const { isGuest } = useAuth()
 const showQuickActions = ref(false)
 
 const PLAYER_NAME = 'Spiros Stampoulis'

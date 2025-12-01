@@ -217,6 +217,12 @@ const getMilestoneIcon = (type) => {
       return 'mdi-trophy-variant'
     case 'tournament_final_win':
       return 'mdi-trophy-award'
+    case 'tournament_quarter_final':
+      return 'mdi-medal'
+    case 'tournament_semi_final':
+      return 'mdi-medal-outline'
+    case 'tournament_final_reached':
+      return 'mdi-trophy-variant-outline'
     default:
       return 'mdi-trophy'
   }

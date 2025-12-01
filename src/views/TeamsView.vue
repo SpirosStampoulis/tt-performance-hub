@@ -13,7 +13,7 @@
         ></v-select>
       </v-col>
       <v-col cols="12" md="6" v-if="selectedTournament">
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTeamDialog = true">
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showTeamDialog = true" :disabled="isGuest">
           Add Team
         </v-btn>
       </v-col>
@@ -37,7 +37,7 @@
                 <v-chip v-if="team.isMyTeam" size="x-small" color="primary" class="ml-2">My Team</v-chip>
               </v-list-item-title>
               <template v-slot:append>
-                <v-btn icon="mdi-delete" size="x-small" @click="confirmDeleteTeam(team)"></v-btn>
+                <v-btn icon="mdi-delete" size="x-small" @click="confirmDeleteTeam(team)" :disabled="isGuest"></v-btn>
               </template>
             </v-list-item>
           </v-list>
@@ -62,7 +62,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="showTeamDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addTeam">Add</v-btn>
+          <v-btn color="primary" @click="addTeam" :disabled="isGuest">Add</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -74,7 +74,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="deleteTeamDialog = false">Cancel</v-btn>
-          <v-btn color="error" @click="deleteTeam">Delete</v-btn>
+          <v-btn color="error" @click="deleteTeam" :disabled="isGuest">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -85,9 +85,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useTeamsStore } from '../stores/teams'
+import { useAuth } from '../composables/useAuth'
 
 const tournamentsStore = useTournamentsStore()
 const teamsStore = useTeamsStore()
+const { isGuest } = useAuth()
 
 const selectedTournament = ref(null)
 const showTeamDialog = ref(false)

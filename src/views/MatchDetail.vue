@@ -109,7 +109,7 @@
                 <div class="text-caption">Return Points Won</div>
               </v-col>
             </v-row>
-            <v-btn size="small" prepend-icon="mdi-pencil" class="mt-2" @click="editServeStats = true">
+            <v-btn size="small" prepend-icon="mdi-pencil" class="mt-2" @click="editServeStats = true" :disabled="isGuest">
               Edit Stats
             </v-btn>
           </v-card-text>
@@ -126,7 +126,7 @@
           <v-card-title>
             Videos
             <v-spacer></v-spacer>
-            <v-btn prepend-icon="mdi-video-plus" size="small" @click="showVideoDialog = true">
+            <v-btn prepend-icon="mdi-video-plus" size="small" @click="showVideoDialog = true" :disabled="isGuest">
               Add Video
             </v-btn>
           </v-card-title>
@@ -141,7 +141,7 @@
                     allowfullscreen
                   ></iframe>
                 </div>
-                <v-btn block size="small" prepend-icon="mdi-delete" class="mt-2" @click="deleteVideo(index)">
+                <v-btn block size="small" prepend-icon="mdi-delete" class="mt-2" @click="deleteVideo(index)" :disabled="isGuest">
                   Remove Video
                 </v-btn>
               </v-col>
@@ -168,7 +168,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="showVideoDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addVideo">Add</v-btn>
+          <v-btn color="primary" @click="addVideo" :disabled="isGuest">Add</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -193,7 +193,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="editServeStats = false">Cancel</v-btn>
-          <v-btn color="primary" @click="saveServeStats">Save</v-btn>
+          <v-btn color="primary" @click="saveServeStats" :disabled="isGuest">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -208,6 +208,7 @@ import { useMatchesStore } from '../stores/matches'
 import { useOpponentsStore } from '../stores/opponents'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useTeamsStore } from '../stores/teams'
+import { useAuth } from '../composables/useAuth'
 import { formatDate } from '../utils/date'
 import { getYouTubeEmbedUrl } from '../utils/storage'
 
@@ -216,6 +217,7 @@ const matchesStore = useMatchesStore()
 const opponentsStore = useOpponentsStore()
 const tournamentsStore = useTournamentsStore()
 const teamsStore = useTeamsStore()
+const { isGuest } = useAuth()
 
 const match = ref(null)
 const showVideoDialog = ref(false)

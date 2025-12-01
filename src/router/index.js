@@ -96,8 +96,12 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
+  const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
     unsubscribe()
+    
+    // Check if user is guest (stored in session/localStorage or state)
+    const guestUser = sessionStorage.getItem('guestUser') === 'true'
+    const user = firebaseUser || (guestUser ? { uid: 'guest', isGuest: true } : null)
     
     if (to.meta.requiresAuth && !user) {
       next('/login')

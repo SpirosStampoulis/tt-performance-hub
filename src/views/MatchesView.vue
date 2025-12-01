@@ -9,6 +9,7 @@
           size="large"
           rounded="lg"
           elevation="2"
+          :disabled="isGuest"
         >
           Add Match
         </v-btn>
@@ -146,8 +147,8 @@
                     <div class="match-score-breakdown">{{ getSetBreakdown(match) }}</div>
                   </div>
                   <div class="match-actions">
-                    <v-btn icon="mdi-pencil" variant="text" size="small" @click.stop="openMatchDialog(match)" class="action-btn"></v-btn>
-                    <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click.stop="confirmDelete(match)" class="action-btn"></v-btn>
+                    <v-btn icon="mdi-pencil" variant="text" size="small" @click.stop="openMatchDialog(match)" class="action-btn" :disabled="isGuest"></v-btn>
+                    <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click.stop="confirmDelete(match)" class="action-btn" :disabled="isGuest"></v-btn>
                     <v-btn v-if="!isScheduled(match)" icon="mdi-arrow-right" variant="text" size="small" :to="`/matches/${match.id}`" class="action-btn"></v-btn>
                   </div>
                 </div>
@@ -173,7 +174,7 @@
               :rules="[v => !!v || 'Tournament is required']"
             >
               <template v-slot:append>
-                <v-btn icon="mdi-plus" size="small" @click="showTournamentDialog = true"></v-btn>
+                <v-btn icon="mdi-plus" size="small" @click="showTournamentDialog = true" :disabled="isGuest"></v-btn>
               </template>
             </v-autocomplete>
 
@@ -222,7 +223,7 @@
               @update:model-value="onTeam1Selected"
             >
               <template v-slot:append>
-                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true"></v-btn>
+                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true" :disabled="isGuest"></v-btn>
               </template>
             </v-autocomplete>
 
@@ -238,7 +239,7 @@
               @update:model-value="onTeam2Selected"
             >
               <template v-slot:append>
-                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true"></v-btn>
+                <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true" :disabled="isGuest"></v-btn>
               </template>
             </v-autocomplete>
 
@@ -256,7 +257,7 @@
               @update:model-value="onPlayer1Selected"
             >
               <template v-slot:append>
-                <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true"></v-btn>
+                <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true" :disabled="isGuest"></v-btn>
               </template>
             </v-autocomplete>
 
@@ -274,7 +275,7 @@
               @update:model-value="onPlayer2Selected"
             >
               <template v-slot:append>
-                <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true"></v-btn>
+                <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true" :disabled="isGuest"></v-btn>
               </template>
             </v-autocomplete>
 
@@ -293,7 +294,7 @@
                 @update:model-value="onPlayer3Selected"
               >
                 <template v-slot:append>
-                  <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true"></v-btn>
+                  <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true" :disabled="isGuest"></v-btn>
                 </template>
               </v-autocomplete>
 
@@ -311,7 +312,7 @@
                 @update:model-value="onPlayer4Selected"
               >
                 <template v-slot:append>
-                  <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true"></v-btn>
+                  <v-btn icon="mdi-plus" size="small" @click="showOpponentDialog = true" :disabled="isGuest"></v-btn>
                 </template>
               </v-autocomplete>
             </template>
@@ -360,10 +361,10 @@
                     ></v-text-field>
                   </v-col>
                   <v-col cols="auto">
-                    <v-btn icon="mdi-close" size="small" @click="removeScore(index)" v-if="formData.scores.length > 1"></v-btn>
+                    <v-btn icon="mdi-close" size="small" @click="removeScore(index)" v-if="formData.scores.length > 1" :disabled="isGuest"></v-btn>
                   </v-col>
                 </v-row>
-                <v-btn prepend-icon="mdi-plus" size="small" @click="addScore">Add Set</v-btn>
+                <v-btn prepend-icon="mdi-plus" size="small" @click="addScore" :disabled="isGuest">Add Set</v-btn>
               </v-card-text>
             </v-card>
             
@@ -476,7 +477,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="closeMatchDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="saveMatch">Save</v-btn>
+          <v-btn color="primary" @click="saveMatch" :disabled="isGuest">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -500,14 +501,14 @@
             clearable
           >
             <template v-slot:append>
-              <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true"></v-btn>
+              <v-btn icon="mdi-plus" size="small" @click="showTeamDialog = true" :disabled="isGuest"></v-btn>
             </template>
           </v-select>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="showOpponentDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addOpponent">Add</v-btn>
+          <v-btn color="primary" @click="addOpponent" :disabled="isGuest">Add</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -539,7 +540,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="showTournamentDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addTournament">Add</v-btn>
+          <v-btn color="primary" @click="addTournament" :disabled="isGuest">Add</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -565,7 +566,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="showTeamDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addTeam">Add</v-btn>
+          <v-btn color="primary" @click="addTeam" :disabled="isGuest">Add</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -577,7 +578,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn text @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" @click="deleteMatch">Delete</v-btn>
+          <v-btn color="error" @click="deleteMatch" :disabled="isGuest">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -591,6 +592,7 @@ import { useMatchesStore } from '../stores/matches'
 import { useOpponentsStore } from '../stores/opponents'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useTeamsStore } from '../stores/teams'
+import { useAuth } from '../composables/useAuth'
 import { formatDate } from '../utils/date'
 import { getYouTubeEmbedUrl } from '../utils/storage'
 
@@ -599,6 +601,7 @@ const matchesStore = useMatchesStore()
 const opponentsStore = useOpponentsStore()
 const tournamentsStore = useTournamentsStore()
 const teamsStore = useTeamsStore()
+const { isGuest } = useAuth()
 
 const matchDialog = ref(false)
 const showOpponentDialog = ref(false)

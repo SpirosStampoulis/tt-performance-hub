@@ -2127,4 +2127,3 @@ input[type="number"]:active,
   appearance: textfield !important;
 }
 </style>
-

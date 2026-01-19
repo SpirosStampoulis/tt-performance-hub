@@ -83,9 +83,9 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/match-preparation',
-    name: 'MatchPreparation',
-    component: () => import('../views/MatchPreparationView.vue'),
+    path: '/match-prediction',
+    name: 'MatchPrediction',
+    component: () => import('../views/MatchPredictionView.vue'),
     meta: { requiresAuth: true }
   },
 ]

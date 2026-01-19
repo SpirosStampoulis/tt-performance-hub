@@ -101,11 +101,10 @@
             rounded="lg"
           ></v-list-item>
           <v-list-item
-            v-if="!isGuest"
-            prepend-icon="mdi-clipboard-text"
-            title="Match Preparation"
-            value="match-preparation"
-            to="/match-preparation"
+            prepend-icon="mdi-crystal-ball"
+            title="Match Prediction"
+            value="match-prediction"
+            to="/match-prediction"
             class="modern-nav-item"
             rounded="lg"
           ></v-list-item>
@@ -177,7 +176,7 @@ const pageTitle = computed(() => {
     OpponentDetail: 'Player Profile',
     Skills: 'Skill Library',
     Streaks: 'Streaks & Milestones',
-    MatchPreparation: 'Match Preparation',
+    MatchPrediction: 'Match Prediction',
     Login: 'Login'
   }
   return titles[route.name] || 'TT Performance Hub'

@@ -118,4 +118,3 @@ const handleGuestLogin = () => {
   text-align: center;
 }
 </style>
-

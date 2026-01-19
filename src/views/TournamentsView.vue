@@ -413,4 +413,3 @@ const toggleDefault = async (tournament) => {
   color: rgba(0, 0, 0, 0.87) !important;
 }
 </style>
-

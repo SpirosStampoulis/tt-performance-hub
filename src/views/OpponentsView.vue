@@ -10,8 +10,20 @@
           rounded="lg"
           elevation="2"
           :disabled="isGuest"
+          class="mr-2"
         >
           Add Player
+        </v-btn>
+        <v-btn
+          color="info"
+          prepend-icon="mdi-cloud-download"
+          @click="showMTTASyncDialog = true"
+          size="large"
+          rounded="lg"
+          elevation="2"
+          :disabled="isGuest"
+        >
+          Sync from MTTA
         </v-btn>
       </v-col>
     </v-row>
@@ -50,8 +62,9 @@
                 <div class="text-caption mb-2">
                   <v-chip size="x-small" color="secondary" variant="flat">{{ opponent.club || 'No team' }}</v-chip>
                 </div>
-                <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.alphaRanking || opponent.topspinRanking" class="text-caption mt-2 mb-2">
-                  <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints" class="mb-1">
+                <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.mttaRank || opponent.alphaRanking || opponent.topspinRanking" class="text-caption mt-2 mb-2">
+                  <div v-if="opponent.mttaStartPosition || opponent.mttaCurrentPosition || opponent.mttaTotalPoints || opponent.mttaRank" class="mb-1">
+                    <v-chip size="x-small" color="info" variant="flat" class="mr-1" v-if="opponent.mttaRank">MTTA Rank: #{{ opponent.mttaRank }}</v-chip>
                     <v-chip size="x-small" color="info" variant="flat" class="mr-1" v-if="opponent.mttaStartPosition">Start: {{ opponent.mttaStartPosition }}</v-chip>
                     <v-chip size="x-small" color="info" variant="flat" class="mr-1" v-if="opponent.mttaCurrentPosition">Current: {{ opponent.mttaCurrentPosition }}</v-chip>
                     <v-chip size="x-small" color="info" variant="flat" v-if="opponent.mttaTotalPoints">Points: {{ opponent.mttaTotalPoints }}</v-chip>
@@ -216,6 +229,159 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="showMTTASyncDialog" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="dialog-header">
+          <span>Sync Players from MTTA</span>
+          <v-btn 
+            icon="mdi-close" 
+            variant="text" 
+            size="small"
+            class="dialog-close-btn"
+            @click="closeMTTASyncDialog"
+          ></v-btn>
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          <v-alert v-if="mttaError" type="error" class="mb-4">
+            {{ mttaError }}
+            <div v-if="mttaError.includes('CORS')" class="mt-2 text-caption">
+              <strong>Note:</strong> Due to CORS restrictions, you may need to set up a CORS proxy. 
+              Add <code>VITE_CORS_PROXY=https://your-proxy-url.com/</code> to your <code>.env</code> file.
+            </div>
+          </v-alert>
+          
+          <v-text-field
+            v-model="mttaTeamName"
+            label="MTTA Team Name"
+            variant="outlined"
+            placeholder='e.g., TopSpin TTA "Skelton"'
+            hint="Enter the exact team name as it appears on results.mtta.mt"
+            persistent-hint
+            class="mb-4"
+          ></v-text-field>
+
+          <v-card v-if="mttaTeamData" variant="outlined" class="mb-4">
+            <v-card-title class="text-subtitle-1">Team Stats</v-card-title>
+            <v-card-text>
+              <v-row>
+                <v-col cols="6">
+                  <div class="text-caption text-medium-emphasis">Wins</div>
+                  <div class="text-h6">{{ mttaTeamData.stats.wins ?? 'N/A' }}</div>
+                </v-col>
+                <v-col cols="6">
+                  <div class="text-caption text-medium-emphasis">Losses</div>
+                  <div class="text-h6">{{ mttaTeamData.stats.losses ?? 'N/A' }}</div>
+                </v-col>
+                <v-col cols="6">
+                  <div class="text-caption text-medium-emphasis">Total Games</div>
+                  <div class="text-h6">{{ mttaTeamData.stats.totalGames ?? 'N/A' }}</div>
+                </v-col>
+                <v-col cols="6">
+                  <div class="text-caption text-medium-emphasis">Win Rate</div>
+                  <div class="text-h6">{{ mttaTeamData.stats.winRate ? `${mttaTeamData.stats.winRate}%` : 'N/A' }}</div>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+
+          <v-card v-if="mttaTeamData?.teamFormation?.length > 0" variant="outlined" class="mb-4">
+            <v-card-title class="text-subtitle-1">Team Formation ({{ mttaTeamData.teamFormation.length }} players)</v-card-title>
+            <v-card-text>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="(player, index) in mttaTeamData.teamFormation"
+                  :key="index"
+                >
+                  <v-list-item-title>{{ player.name }}</v-list-item-title>
+                  <v-list-item-subtitle>Rank #{{ player.rank }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+
+          <v-card v-if="mttaPotentialMatches && mttaPotentialMatches.length > 0" variant="outlined" class="mb-4" color="warning">
+            <v-card-title class="text-subtitle-1">
+              <v-icon class="mr-2" color="warning">mdi-alert</v-icon>
+              Potential Matches Found ({{ mttaPotentialMatches.length }})
+            </v-card-title>
+            <v-card-text>
+              <v-alert type="info" variant="tonal" class="mb-4">
+                The system found similar names in your database. Please confirm if these are the same person or create new players.
+              </v-alert>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="(match, index) in mttaPotentialMatches"
+                  :key="index"
+                  class="mb-2"
+                  style="border: 1px solid rgba(0,0,0,0.12); border-radius: 8px;"
+                >
+                  <v-list-item-title class="mb-2">
+                    <strong>MTTA:</strong> {{ match.mttaName }} (Rank #{{ match.mttaRank }})
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="mb-2">
+                    <strong>Your DB:</strong> {{ match.existingPlayer.name }}
+                    <v-chip size="x-small" color="info" class="ml-2">
+                      {{ (match.matchScore * 100).toFixed(0) }}% match
+                    </v-chip>
+                  </v-list-item-subtitle>
+                  <v-list-item-subtitle class="text-caption text-medium-emphasis mb-2">
+                    {{ match.reason }}
+                  </v-list-item-subtitle>
+                  <template v-slot:append>
+                    <div class="d-flex flex-column gap-2">
+                      <v-btn
+                        size="small"
+                        color="success"
+                        variant="flat"
+                        @click="confirmMatch(match.mttaName, match.existingPlayer.id)"
+                        :disabled="mttaNameMappings[match.mttaName] === match.existingPlayer.id"
+                      >
+                        <v-icon size="small" class="mr-1">mdi-check</v-icon>
+                        Match
+                      </v-btn>
+                      <v-btn
+                        size="small"
+                        color="grey"
+                        variant="text"
+                        @click="rejectMatch(match.mttaName)"
+                        :disabled="!mttaNameMappings[match.mttaName]"
+                      >
+                        <v-icon size="small" class="mr-1">mdi-close</v-icon>
+                        New Player
+                      </v-btn>
+                    </div>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="closeMTTASyncDialog" :disabled="mttaLoading">Cancel</v-btn>
+          <v-btn 
+            color="info" 
+            prepend-icon="mdi-download" 
+            @click="fetchMTTAData"
+            :loading="mttaLoading"
+            :disabled="!mttaTeamName || mttaLoading"
+          >
+            Fetch Data
+          </v-btn>
+          <v-btn 
+            color="success" 
+            prepend-icon="mdi-sync" 
+            @click="syncMTTAPlayers"
+            :loading="mttaSyncing"
+            :disabled="!mttaTeamData || mttaSyncing || isGuest"
+          >
+            Sync Players
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -226,6 +392,7 @@ import { useMatchesStore } from '../stores/matches'
 import { useTeamsStore } from '../stores/teams'
 import { useTournamentsStore } from '../stores/tournaments'
 import { useAuth } from '../composables/useAuth'
+import { useMTTA } from '../composables/useMTTA'
 import { uploadImage } from '../utils/storage'
 
 const opponentsStore = useOpponentsStore()
@@ -233,6 +400,7 @@ const matchesStore = useMatchesStore()
 const teamsStore = useTeamsStore()
 const tournamentsStore = useTournamentsStore()
 const { isGuest } = useAuth()
+const { loading: mttaLoading, error: mttaError, teamData: mttaTeamData, potentialMatches: mttaPotentialMatches, fetchTeamData, syncPlayers } = useMTTA()
 
 const opponentDialog = ref(false)
 const showTeamDialog = ref(false)
@@ -249,6 +417,11 @@ const newTeam = ref({
   tournamentId: '',
   isMyTeam: false
 })
+
+const showMTTASyncDialog = ref(false)
+const mttaTeamName = ref('TopSpin TTA "Skelton"')
+const mttaSyncing = ref(false)
+const mttaNameMappings = ref({})
 
 const formData = ref({
   name: '',
@@ -415,6 +588,45 @@ const getInitials = (name) => {
 const getMatchCount = (opponentId) => {
   return matchesStore.getMatchesByOpponent(opponentId).length
 }
+
+const fetchMTTAData = async () => {
+  try {
+    await fetchTeamData(mttaTeamName.value)
+  } catch (error) {
+    console.error('Error fetching MTTA data:', error)
+  }
+}
+
+const confirmMatch = (mttaName, opponentId) => {
+  mttaNameMappings.value[mttaName] = opponentId
+}
+
+const rejectMatch = (mttaName) => {
+  delete mttaNameMappings.value[mttaName]
+}
+
+const syncMTTAPlayers = async () => {
+  if (!mttaTeamName.value) return
+  
+  mttaSyncing.value = true
+  try {
+    const result = await syncPlayers(mttaTeamName.value, mttaNameMappings.value)
+    alert(`Successfully synced ${result.syncedCount} player(s) from MTTA!`)
+    await opponentsStore.fetchOpponents()
+    closeMTTASyncDialog()
+  } catch (error) {
+    console.error('Error syncing MTTA players:', error)
+    alert('Error syncing players: ' + (error.message || 'Unknown error'))
+  } finally {
+    mttaSyncing.value = false
+  }
+}
+
+const closeMTTASyncDialog = () => {
+  showMTTASyncDialog.value = false
+  mttaTeamName.value = 'TopSpin TTA "Skelton"'
+  mttaNameMappings.value = {}
+}
 </script>
 
 <style scoped>
@@ -436,5 +648,26 @@ const getMatchCount = (opponentId) => {
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
   border: 3px solid rgba(99, 102, 241, 0.2);
 }
-</style>
 
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  padding: 16px 20px;
+}
+
+.dialog-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: rgba(0, 0, 0, 0.6) !important;
+  transition: all 0.3s ease;
+}
+
+.dialog-close-btn:hover {
+  color: #DC143C !important;
+  background-color: rgba(220, 20, 60, 0.1) !important;
+  transform: scale(1.1);
+}
+</style>

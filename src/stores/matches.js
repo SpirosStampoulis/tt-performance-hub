@@ -14,10 +14,14 @@ import {
   Timestamp 
 } from 'firebase/firestore'
 import { db } from '../services/firebase'
+import { useTournamentsStore } from './tournaments'
+import { useOpponentsStore } from './opponents'
 
 export const useMatchesStore = defineStore('matches', () => {
   const matches = ref([])
   const loading = ref(false)
+  const tournamentsStore = useTournamentsStore()
+  const opponentsStore = useOpponentsStore()
 
   const fetchMatches = async () => {
     loading.value = true
@@ -352,6 +356,290 @@ export const useMatchesStore = defineStore('matches', () => {
     }
   }
 
+  const predictMatchBetweenPlayers = (player1Id, player2Id, tournamentId = null) => {
+    if (!player1Id || !player2Id) {
+      return {
+        winProbability: 50,
+        confidence: 'low',
+        factors: ['Both players must be selected'],
+        recommendation: 'Select both players to get a prediction',
+        commonOpponents: [],
+        mttaComparison: null
+      }
+    }
+
+    const currentYear = new Date().getFullYear()
+    let leagueTournamentId = tournamentId
+
+    if (!leagueTournamentId) {
+      const leagueMatches = matches.value.filter(m => {
+        if (!m.tournamentId) return false
+        const tournament = tournamentsStore?.tournaments?.find(t => t.id === m.tournamentId)
+        return tournament && (tournament.type === 'League' || tournament.type === 'Simple League')
+      })
+      
+      if (leagueMatches.length > 0) {
+        const tournamentIds = [...new Set(leagueMatches.map(m => m.tournamentId))]
+        const currentTournaments = tournamentIds
+          .map(id => tournamentsStore?.tournaments?.find(t => t.id === id))
+          .filter(t => t && (t.year === currentYear || t.year === String(currentYear)))
+          .sort((a, b) => {
+            const yearA = parseInt(a.year) || 0
+            const yearB = parseInt(b.year) || 0
+            return yearB - yearA
+          })
+        
+        if (currentTournaments.length > 0) {
+          leagueTournamentId = currentTournaments[0].id
+        }
+      }
+    }
+
+    const player1Matches = matches.value.filter(m => {
+      if (leagueTournamentId && m.tournamentId !== leagueTournamentId) return false
+      return (m.player1Id === player1Id || m.player2Id === player1Id || m.opponentId === player1Id) &&
+             m.scores && m.scores.length > 0
+    })
+
+    const player2Matches = matches.value.filter(m => {
+      if (leagueTournamentId && m.tournamentId !== leagueTournamentId) return false
+      return (m.player1Id === player2Id || m.player2Id === player2Id || m.opponentId === player2Id) &&
+             m.scores && m.scores.length > 0
+    })
+
+    const player1Opponents = new Set()
+    player1Matches.forEach(m => {
+      if (m.player1Id === player1Id) {
+        if (m.player2Id) player1Opponents.add(m.player2Id)
+        if (m.opponentId) player1Opponents.add(m.opponentId)
+      } else if (m.player2Id === player1Id) {
+        if (m.player1Id) player1Opponents.add(m.player1Id)
+      } else if (m.opponentId === player1Id) {
+        if (m.player1Id) player1Opponents.add(m.player1Id)
+        if (m.player2Id) player1Opponents.add(m.player2Id)
+      }
+    })
+
+    const player2Opponents = new Set()
+    player2Matches.forEach(m => {
+      if (m.player1Id === player2Id) {
+        if (m.player2Id) player2Opponents.add(m.player2Id)
+        if (m.opponentId) player2Opponents.add(m.opponentId)
+      } else if (m.player2Id === player2Id) {
+        if (m.player1Id) player2Opponents.add(m.player1Id)
+      } else if (m.opponentId === player2Id) {
+        if (m.player1Id) player2Opponents.add(m.player1Id)
+        if (m.player2Id) player2Opponents.add(m.player2Id)
+      }
+    })
+
+    const commonOpponentIds = [...player1Opponents].filter(id => 
+      id !== player1Id && id !== player2Id && player2Opponents.has(id)
+    )
+
+    const commonOpponents = commonOpponentIds.map(opponentId => {
+      const player1OppMatches = player1Matches.filter(m => {
+        return (m.player1Id === opponentId || m.player2Id === opponentId || m.opponentId === opponentId) &&
+               (m.player1Id === player1Id || m.player2Id === player1Id || m.opponentId === player1Id)
+      })
+
+      const player2OppMatches = player2Matches.filter(m => {
+        return (m.player1Id === opponentId || m.player2Id === opponentId || m.opponentId === opponentId) &&
+               (m.player1Id === player2Id || m.player2Id === player2Id || m.opponentId === player2Id)
+      })
+
+      let player1Wins = 0
+      let player1Losses = 0
+      let player2Wins = 0
+      let player2Losses = 0
+
+      const player1MatchDetails = []
+      player1OppMatches.forEach(match => {
+        const isPlayer1First = match.player1Id === player1Id || match.opponentId === player1Id
+        let player1Sets = 0
+        let opponentSets = 0
+        const setScores = []
+
+        match.scores.forEach(score => {
+          const p1Score = score.player1Score || score.myScore || 0
+          const p2Score = score.player2Score || score.oppScore || 0
+          
+          if (isPlayer1First) {
+            if (p1Score > p2Score) player1Sets++
+            else if (p2Score > p1Score) opponentSets++
+            setScores.push(`${p1Score}-${p2Score}`)
+          } else {
+            if (p2Score > p1Score) player1Sets++
+            else if (p1Score > p2Score) opponentSets++
+            setScores.push(`${p2Score}-${p1Score}`)
+          }
+        })
+
+        const matchResult = player1Sets > opponentSets ? 'W' : opponentSets > player1Sets ? 'L' : 'D'
+        const setScoreDisplay = `${player1Sets}-${opponentSets}`
+        const detailedScores = setScores.join(' ')
+
+        if (player1Sets > opponentSets) player1Wins++
+        else if (opponentSets > player1Sets) player1Losses++
+
+        player1MatchDetails.push({
+          result: matchResult,
+          setScore: setScoreDisplay,
+          detailedScores: detailedScores,
+          date: match.date
+        })
+      })
+
+      const player2MatchDetails = []
+      player2OppMatches.forEach(match => {
+        const isPlayer2First = match.player1Id === player2Id || match.opponentId === player2Id
+        let player2Sets = 0
+        let opponentSets = 0
+        const setScores = []
+
+        match.scores.forEach(score => {
+          const p1Score = score.player1Score || score.myScore || 0
+          const p2Score = score.player2Score || score.oppScore || 0
+          
+          if (isPlayer2First) {
+            if (p1Score > p2Score) player2Sets++
+            else if (p2Score > p1Score) opponentSets++
+            setScores.push(`${p1Score}-${p2Score}`)
+          } else {
+            if (p2Score > p1Score) player2Sets++
+            else if (p1Score > p2Score) opponentSets++
+            setScores.push(`${p2Score}-${p1Score}`)
+          }
+        })
+
+        const matchResult = player2Sets > opponentSets ? 'W' : opponentSets > player2Sets ? 'L' : 'D'
+        const setScoreDisplay = `${player2Sets}-${opponentSets}`
+        const detailedScores = setScores.join(' ')
+
+        if (player2Sets > opponentSets) player2Wins++
+        else if (opponentSets > player2Sets) player2Losses++
+
+        player2MatchDetails.push({
+          result: matchResult,
+          setScore: setScoreDisplay,
+          detailedScores: detailedScores,
+          date: match.date
+        })
+      })
+
+      const player1WinRate = (player1Wins + player1Losses) > 0 
+        ? (player1Wins / (player1Wins + player1Losses)) * 100 
+        : 0
+      const player2WinRate = (player2Wins + player2Losses) > 0 
+        ? (player2Wins / (player2Wins + player2Losses)) * 100 
+        : 0
+
+      return {
+        opponentId,
+        player1Wins,
+        player1Losses,
+        player1WinRate,
+        player2Wins,
+        player2Losses,
+        player2WinRate,
+        advantage: player1WinRate - player2WinRate,
+        player1Matches: player1MatchDetails,
+        player2Matches: player2MatchDetails
+      }
+    })
+
+    const h2h = getHeadToHeadBetweenPlayers(player1Id, player2Id)
+
+    let winProbability = 50
+    const factors = []
+    let confidence = 'low'
+
+    if (commonOpponents.length > 0) {
+      const avgAdvantage = commonOpponents.reduce((sum, co) => sum + co.advantage, 0) / commonOpponents.length
+      winProbability = 50 + (avgAdvantage * 0.5)
+      factors.push(`Based on ${commonOpponents.length} common opponent(s) in current season`)
+      
+      if (commonOpponents.length >= 3) {
+        confidence = 'high'
+      } else if (commonOpponents.length >= 2) {
+        confidence = 'medium'
+      }
+    } else {
+      factors.push('No common opponents found in current season league tournament')
+    }
+
+    if (h2h.total > 0) {
+      const h2hWeight = Math.min(h2h.total / 5, 1) * 0.3
+      const commonOpponentsWeight = 0.5
+      const mttaWeight = 0.2
+
+      const h2hAdjustment = (parseFloat(h2h.player1WinRate) - 50) * h2hWeight
+      winProbability = 50 + (winProbability - 50) * commonOpponentsWeight + h2hAdjustment
+
+      factors.push(`Head-to-head: ${h2h.player1Wins}-${h2h.player2Wins} (${h2h.player1WinRate}% win rate)`)
+
+      if (h2h.total >= 3) {
+        confidence = confidence === 'low' ? 'medium' : confidence
+      }
+    }
+
+    const player1 = opponentsStore?.opponents?.find(o => o.id === player1Id)
+    const player2 = opponentsStore?.opponents?.find(o => o.id === player2Id)
+
+    let mttaComparison = null
+    if (player1?.mttaRank && player2?.mttaRank) {
+      const rankDiff = player2.mttaRank - player1.mttaRank
+      mttaComparison = {
+        player1Rank: player1.mttaRank,
+        player2Rank: player2.mttaRank,
+        rankDifference: rankDiff,
+        advantage: rankDiff > 0 ? 'player1' : rankDiff < 0 ? 'player2' : 'even'
+      }
+
+      if (Math.abs(rankDiff) > 0) {
+        const mttaAdjustment = Math.min(Math.abs(rankDiff) * 2, 15) * (rankDiff > 0 ? 1 : -1)
+        winProbability += mttaAdjustment
+        const betterPlayer = rankDiff > 0 ? player1 : player2
+        factors.push(`MTTA Ranking: ${player1.mttaRank} vs ${player2.mttaRank} (${betterPlayer.name} ranked ${Math.abs(rankDiff)} position${Math.abs(rankDiff) !== 1 ? 's' : ''} higher)`)
+      } else {
+        factors.push(`MTTA Ranking: Both players ranked ${player1.mttaRank}`)
+      }
+    } else {
+      if (player1 && !player1.mttaRank) {
+        factors.push(`${player1.name} MTTA ranking not available`)
+      }
+      if (player2 && !player2.mttaRank) {
+        factors.push(`${player2.name} MTTA ranking not available`)
+      }
+    }
+
+    winProbability = Math.max(10, Math.min(90, winProbability))
+
+    let recommendation = ''
+    if (winProbability >= 70) {
+      recommendation = 'Strong favorite - maintain consistent play'
+    } else if (winProbability >= 60) {
+      recommendation = 'Favorable matchup - execute game plan confidently'
+    } else if (winProbability >= 50) {
+      recommendation = 'Even matchup - focus on key moments'
+    } else if (winProbability >= 40) {
+      recommendation = 'Challenging matchup - adapt strategy as needed'
+    } else {
+      recommendation = 'Underdog position - play with focus and determination'
+    }
+
+    return {
+      winProbability: Math.round(winProbability),
+      confidence,
+      factors,
+      recommendation,
+      commonOpponents,
+      mttaComparison,
+      headToHead: h2h,
+      tournamentId: leagueTournamentId
+    }
+  }
+
   const predictMatchup = (opponentId, opponentData = null, currentPlayerId = null) => {
     const headToHead = headToHeadStats(opponentId)
     const opponentMatches = getMatchesByOpponent(opponentId)
@@ -526,7 +814,8 @@ export const useMatchesStore = defineStore('matches', () => {
     setsTrend,
     predictMatchup,
     getMatchesBetweenPlayers,
-    getHeadToHeadBetweenPlayers
+    getHeadToHeadBetweenPlayers,
+    predictMatchBetweenPlayers
   }
 })
 

@@ -2,31 +2,106 @@ const MTTA_BASE_URL = 'https://results.mtta.mt'
 
 const CORS_PROXY = import.meta.env.VITE_CORS_PROXY || ''
 
+function buildProxyUrl(targetUrl, proxy) {
+  if (!proxy) return targetUrl
+  
+  const proxyTrimmed = proxy.trim()
+  
+  if (proxyTrimmed.includes('?url=') || proxyTrimmed.includes('&url=')) {
+    return `${proxyTrimmed}${encodeURIComponent(targetUrl)}`
+  }
+  
+  if (proxyTrimmed.endsWith('/')) {
+    return `${proxyTrimmed}${targetUrl}`
+  }
+  
+  return `${proxyTrimmed}/${targetUrl}`
+}
+
+async function fetchWithRetry(url, options, maxRetries = 2) {
+  let lastError = null
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        if (response.status === 429 && attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)))
+          continue
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      return response
+    } catch (error) {
+      lastError = error
+      
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - the server took too long to respond')
+      }
+      
+      if (attempt < maxRetries && (
+        error.message?.includes('Failed to fetch') ||
+        error.message?.includes('network') ||
+        error.message?.includes('NetworkError')
+      )) {
+        console.log(`Retry attempt ${attempt + 1}/${maxRetries}...`)
+        continue
+      }
+      
+      throw error
+    }
+  }
+  
+  throw lastError
+}
+
 export async function fetchMTTATeamData(teamName) {
   try {
     const encodedTeamName = encodeURIComponent(teamName)
-    const url = `${MTTA_BASE_URL}/teamplayers?team=${encodedTeamName}`
+    const targetUrl = `${MTTA_BASE_URL}/teamplayers?team=${encodedTeamName}`
     
-    const fetchUrl = CORS_PROXY ? `${CORS_PROXY}${url}` : url
+    const fetchUrl = buildProxyUrl(targetUrl, CORS_PROXY)
     
-    console.log('Fetching MTTA data from:', fetchUrl)
-    console.log('CORS Proxy configured:', CORS_PROXY ? 'Yes' : 'No')
+    console.log('Fetching MTTA data...')
+    console.log('Target URL:', targetUrl)
+    console.log('CORS Proxy:', CORS_PROXY || 'Not configured')
+    console.log('Final URL:', fetchUrl)
     
-    const response = await fetch(fetchUrl, {
+    const response = await fetchWithRetry(fetchUrl, {
       method: 'GET',
       headers: {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
+      mode: 'cors',
+      cache: 'no-cache'
     })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch MTTA data: ${response.status} ${response.statusText}`)
-    }
 
     const html = await response.text()
     
     if (!html || html.length < 100) {
-      throw new Error('Received empty or invalid response from MTTA website')
+      throw new Error('Received empty or invalid response from MTTA website. The proxy might not be working correctly.')
+    }
+    
+    if (html.includes('CORS') && html.includes('blocked')) {
+      throw new Error('CORS proxy returned an error page. The proxy might not be configured correctly.')
+    }
+    
+    if (html.includes('Access Denied') || html.includes('403') || html.includes('Forbidden')) {
+      throw new Error('Access denied by the proxy server. The proxy might require authentication or have rate limits.')
     }
     
     return parseMTTAHTML(html, teamName)
@@ -34,9 +109,26 @@ export async function fetchMTTATeamData(teamName) {
     console.error('Error fetching MTTA team data:', error)
     
     let errorMessage = error.message || 'Failed to fetch MTTA data'
+    const isCorsError = error.message?.includes('Failed to fetch') || 
+                       error.message?.includes('CORS') || 
+                       error.name === 'TypeError' ||
+                       error.message?.includes('network') ||
+                       error.message?.includes('NetworkError')
     
-    if (error.message?.includes('Failed to fetch') || error.message?.includes('CORS') || error.name === 'TypeError') {
-      errorMessage = `CORS Error: The browser blocked the request to ${MTTA_BASE_URL}. You need to set up a CORS proxy. Add VITE_CORS_PROXY to your .env file. See MTTA_INTEGRATION.md for details.`
+    if (isCorsError) {
+      if (CORS_PROXY) {
+        errorMessage = `CORS Error: The proxy (${CORS_PROXY}) is not working correctly. Possible issues:\n` +
+          `1. The proxy server might be down or rate-limited\n` +
+          `2. The proxy URL format might be incorrect\n` +
+          `3. The proxy might require authentication\n\n` +
+          `Please check your VITE_CORS_PROXY setting in .env file and try a different proxy. See CORS_PROXY_SETUP.md for alternatives.`
+      } else {
+        errorMessage = `CORS Error: The browser blocked the request to ${MTTA_BASE_URL}.\n\n` +
+          `You need to set up a CORS proxy. Add VITE_CORS_PROXY to your .env file.\n\n` +
+          `Quick fix: Add this to your .env file:\n` +
+          `VITE_CORS_PROXY=https://api.allorigins.win/raw?url=\n\n` +
+          `Then restart your dev server. See CORS_PROXY_SETUP.md for more options.`
+      }
     }
     
     throw new Error(errorMessage)

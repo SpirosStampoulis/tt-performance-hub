@@ -83,7 +83,12 @@
                         <v-divider></v-divider>
                         <v-card-text>
                           <div class="mb-3">
-                            <div class="text-caption text-medium-emphasis mb-1">Match Statistics</div>
+                            <div class="text-caption text-medium-emphasis mb-1">
+                              Match Statistics
+                              <span v-if="selectedTournament" class="text-caption text-primary">
+                                ({{ tournamentsStore.tournaments.find(t => t.id === selectedTournament)?.name || 'Tournament' }})
+                              </span>
+                            </div>
                             <v-row>
                               <v-col cols="6">
                                 <div class="text-center pa-2 bg-grey-lighten-4 rounded">
@@ -302,10 +307,14 @@ const getTeamPlayers = (team) => {
 }
 
 const getPlayerStats = (playerId) => {
-  const playerMatches = matchesStore.matches.filter(m => 
+  let playerMatches = matchesStore.matches.filter(m => 
     (m.player1Id === playerId || m.player2Id === playerId || m.opponentId === playerId) &&
     m.scores && m.scores.length > 0
   )
+  
+  if (selectedTournament.value) {
+    playerMatches = playerMatches.filter(m => m.tournamentId === selectedTournament.value)
+  }
   
   let wins = 0
   let losses = 0
@@ -343,11 +352,16 @@ const getPlayerStats = (playerId) => {
 }
 
 const getPlayerRecentMatches = (playerId) => {
-  return matchesStore.matches
-    .filter(m => 
-      (m.player1Id === playerId || m.player2Id === playerId || m.opponentId === playerId) &&
-      m.scores && m.scores.length > 0
-    )
+  let playerMatches = matchesStore.matches.filter(m => 
+    (m.player1Id === playerId || m.player2Id === playerId || m.opponentId === playerId) &&
+    m.scores && m.scores.length > 0
+  )
+  
+  if (selectedTournament.value) {
+    playerMatches = playerMatches.filter(m => m.tournamentId === selectedTournament.value)
+  }
+  
+  return playerMatches
     .sort((a, b) => {
       const dateA = a.date instanceof Date ? a.date : (a.date?.toDate ? a.date.toDate() : new Date(a.date))
       const dateB = b.date instanceof Date ? b.date : (b.date?.toDate ? b.date.toDate() : new Date(b.date))

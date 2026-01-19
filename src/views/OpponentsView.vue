@@ -245,10 +245,20 @@
         <v-divider></v-divider>
         <v-card-text>
           <v-alert v-if="mttaError" type="error" class="mb-4">
-            {{ mttaError }}
-            <div v-if="mttaError.includes('CORS')" class="mt-2 text-caption">
-              <strong>Note:</strong> Due to CORS restrictions, you may need to set up a CORS proxy. 
-              Add <code>VITE_CORS_PROXY=https://your-proxy-url.com/</code> to your <code>.env</code> file.
+            <div class="text-body-2 mb-2">{{ mttaError }}</div>
+            <div v-if="mttaError.includes('CORS')" class="mt-2">
+              <div class="text-caption mb-2">
+                <strong>Quick Fix:</strong>
+              </div>
+              <ol class="text-caption pl-4" style="line-height: 1.8;">
+                <li>Create or edit <code>.env</code> file in your project root</li>
+                <li>Add this line: <code>VITE_CORS_PROXY=https://api.allorigins.win/raw?url=</code></li>
+                <li><strong>Restart your dev server</strong> (stop with Ctrl+C and run <code>npm run dev</code> again)</li>
+                <li>Try fetching again</li>
+              </ol>
+              <div class="text-caption mt-2">
+                <strong>Alternative proxies:</strong> See <code>CORS_PROXY_SETUP.md</code> for more options including setting up your own proxy server.
+              </div>
             </div>
           </v-alert>
           

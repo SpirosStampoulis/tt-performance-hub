@@ -349,7 +349,39 @@ const matches = computed(() => {
 })
 
 const headToHead = computed(() => {
-  return matchesStore.headToHeadStats(route.params.id)
+  let wins = 0
+  let losses = 0
+  
+  matches.value.forEach(match => {
+    if (!match.scores || match.scores.length === 0) return
+    const playerId = route.params.id
+    const isPlayer1 = match.player1Id === playerId || match.opponentId === playerId
+    
+    let player1Sets = 0
+    let player2Sets = 0
+    
+    match.scores.forEach(score => {
+      const p1Score = score.player1Score || score.myScore || 0
+      const p2Score = score.player2Score || score.oppScore || 0
+      if (p1Score > p2Score) player1Sets++
+      else if (p2Score > p1Score) player2Sets++
+    })
+    
+    if (isPlayer1) {
+      if (player1Sets > player2Sets) wins++
+      else if (player2Sets > player1Sets) losses++
+    } else {
+      if (player2Sets > player1Sets) wins++
+      else if (player1Sets > player2Sets) losses++
+    }
+  })
+  
+  return {
+    wins,
+    losses,
+    total: matches.value.length,
+    winRate: matches.value.length > 0 ? ((wins / matches.value.length) * 100).toFixed(1) : 0
+  }
 })
 
 const averageScoreDiff = computed(() => {
@@ -495,7 +527,31 @@ const matchupPrediction = computed(() => {
   const currentPlayer = opponentsStore.opponents.find(o => o.name === PLAYER_NAME)
   const currentPlayerId = currentPlayer ? currentPlayer.id : null
   
-  return matchesStore.predictMatchup(route.params.id, opponent.value, currentPlayerId)
+  const prediction = matchesStore.predictMatchup(route.params.id, opponent.value, currentPlayerId)
+  
+  if (selectedTournament.value && prediction) {
+    const tournamentName = tournamentsStore.tournaments.find(t => t.id === selectedTournament.value)?.name || 'tournament'
+    const factors = [...prediction.factors]
+    
+    if (!factors[0]?.includes('Filtered to')) {
+      factors.unshift(`Filtered to ${tournamentName} matches only`)
+    } else {
+      factors[0] = `Filtered to ${tournamentName} matches only`
+    }
+    
+    return {
+      ...prediction,
+      headToHead: {
+        wins: headToHead.value.wins,
+        losses: headToHead.value.losses,
+        total: headToHead.value.total,
+        winRate: parseFloat(headToHead.value.winRate) || 0
+      },
+      factors
+    }
+  }
+  
+  return prediction
 })
 
 const winProbability = computed(() => {

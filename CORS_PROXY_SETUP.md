@@ -73,30 +73,26 @@ node proxy-server.js
 VITE_CORS_PROXY=http://localhost:3001/api/proxy/
 ```
 
-## Option 4: Use Vercel Serverless Function (If Deployed on Vercel)
+## Option 4: Use Vercel Serverless Function (Recommended for Production)
 
-Create `api/proxy.js` in your project:
+If you're deploying on Vercel, a serverless function is already created at `api/proxy.js`.
 
-```javascript
-export default async function handler(req, res) {
-  const { url } = req.query;
-  
-  if (!url) {
-    return res.status(400).json({ error: 'URL parameter required' });
-  }
+1. Deploy your app to Vercel (or it's already deployed)
+2. Update your `.env` file:
+   ```env
+   VITE_CORS_PROXY=https://your-app.vercel.app/api/proxy?url=
+   ```
+   Replace `your-app.vercel.app` with your actual Vercel domain.
 
-  try {
-    const response = await fetch(url);
-    const html = await response.text();
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.send(html);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
-```
+3. Restart your dev server
 
-Then use: `VITE_CORS_PROXY=https://your-app.vercel.app/api/proxy?url=`
+**Benefits:**
+- ✅ No rate limits
+- ✅ Reliable and fast
+- ✅ Works in production
+- ✅ Free on Vercel
+
+**Note:** For local development, you can still use Option 1 (public proxy) or Option 3 (local proxy server).
 
 ## Testing
 
